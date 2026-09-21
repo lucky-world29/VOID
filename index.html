@@ -1,0 +1,7188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infinite Smoke Fluid Background</title>
+
+<style>
+    :root {
+        --accent: #ff1744;
+        --accent-rgb: 255, 23, 68;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html,
+    body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        color: #fff;
+    }
+body {
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+    /* ==========================================================
+       FLUID CANVAS
+       ========================================================== */
+
+    #fluid {
+        position: fixed;
+        inset: 0;
+        width: 100dvw;
+        height: 100dvh;
+        z-index: 0;
+        display: block;
+        background: #000;
+    }
+
+    /*
+        Very subtle vignette.
+
+        This does NOT create the fluid.
+        It simply keeps the center readable when you put
+        website content over the simulation.
+    */
+    .vignette {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+
+        background:
+            radial-gradient(
+                circle at 50% 48%,
+                transparent 16%,
+                rgba(0, 0, 0, 0.08) 50%,
+                rgba(0, 0, 0, 0.78) 100%
+            );
+    }
+
+    /*
+        Very light film grain so the black background doesn't
+        look digitally flat.
+    */
+    .grain {
+        position: fixed;
+        inset: -50%;
+        z-index: 2;
+        pointer-events: none;
+
+        opacity: 0.012;
+        mix-blend-mode: screen;
+
+        background-image:
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+
+        animation: none;
+    }
+
+    @keyframes grainMove {
+        0% {
+            transform: translate(0, 0);
+        }
+
+        25% {
+            transform: translate(2%, -1%);
+        }
+
+        50% {
+            transform: translate(-1%, 2%);
+        }
+
+        75% {
+            transform: translate(1%, 1%);
+        }
+
+        100% {
+            transform: translate(-2%, -2%);
+        }
+    }
+
+    /* ==========================================================
+       DEMO CONTENT
+       Remove .content if this is being used behind your
+       existing website.
+       ========================================================== */
+
+  .content {
+    position: relative;
+    z-index: 3;
+
+    min-height: 100dvh;
+
+    display: grid;
+    align-items: center;
+    justify-items: start;
+
+    pointer-events: none;
+
+    text-align: left;
+
+    padding: 24px 7vw;
+}
+
+    .content-inner {
+    max-width: 100%;
+    width: 100%;
+}
+
+    .eyebrow {
+        margin-bottom: 18px;
+
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    h1 {
+        margin: 0;
+
+        font-size: clamp(52px, 10vw, 150px);
+        line-height: 0.82;
+
+        letter-spacing: -7px;
+        text-transform: uppercase;
+    }
+
+    h1 span {
+        color: transparent;
+
+        -webkit-text-stroke:
+            1px
+            rgba(255, 255, 255, 0.72);
+    }
+
+    .content p {
+    max-width: 520px;
+
+    margin:
+        30px
+        0
+        0;
+
+    color: rgba(255, 255, 255, 0.58);
+
+    line-height: 1.8;
+    font-size: 14px;
+
+    text-align: left;
+}
+
+.content h1 {
+    width: 100%;
+
+    font-size: clamp(100px, 18vw, 300px);
+    line-height: 0.72;
+
+    letter-spacing: -0.08em;
+
+    text-align: left;
+}
+
+.content h1 span {
+    display: block;
+}
+
+    /* ==========================================================
+       COLOR / EFFECT PANEL
+       ========================================================== */
+
+    .panel {
+        position: fixed;
+
+        top: 22px;
+        right: 22px;
+
+        z-index: 5;
+
+        width: 230px;
+
+        padding: 16px;
+
+        border:
+            1px solid
+            rgba(255, 255, 255, 0.14);
+
+        border-radius: 14px;
+
+        background:
+            rgba(0, 0, 0, 0.38);
+
+        backdrop-filter: blur(18px);
+
+        box-shadow:
+            0 18px 60px
+            rgba(0, 0, 0, 0.4);
+    }
+
+    .panel-title {
+        margin-bottom: 13px;
+
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+
+        color:
+            rgba(255, 255, 255, 0.72);
+    }
+
+    .row {
+        display: flex;
+        align-items: center;
+
+        gap: 10px;
+
+        margin-bottom: 10px;
+    }
+
+    .row:last-child {
+        margin-bottom: 0;
+    }
+
+    .swatches {
+        display: flex;
+        flex-wrap: wrap;
+
+        gap: 7px;
+
+        margin:
+            4px
+            0
+            12px;
+    }
+
+    .swatch {
+        width: 23px;
+        height: 23px;
+
+        padding: 0;
+
+        border:
+            1px solid
+            rgba(255, 255, 255, 0.22);
+
+        border-radius: 50%;
+
+        cursor: pointer;
+
+        outline: none;
+    }
+
+    .swatch.active {
+        box-shadow:
+            0 0 0 2px #000,
+            0 0 0 3px rgba(255, 255, 255, 0.9);
+    }
+
+    input[type="color"] {
+        width: 38px;
+        height: 28px;
+
+        padding: 2px;
+
+        border:
+            1px solid
+            rgba(255, 255, 255, 0.2);
+
+        border-radius: 7px;
+
+        background: #050505;
+
+        cursor: pointer;
+    }
+
+    input[type="range"] {
+        width: 100%;
+
+        accent-color:
+            var(--accent);
+    }
+
+    label {
+        display: block;
+
+        margin-bottom: 5px;
+
+        font-size: 9px;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+
+        color:
+            rgba(255, 255, 255, 0.42);
+    }
+
+    .value {
+        margin-left: auto;
+
+        color:
+            rgba(255, 255, 255, 0.6);
+
+        font-size: 10px;
+
+        font-variant-numeric:
+            tabular-nums;
+    }
+
+    .tip {
+        margin-top: 11px;
+
+        padding-top: 11px;
+
+        border-top:
+            1px solid
+            rgba(255, 255, 255, 0.08);
+
+        font-size: 9px;
+        line-height: 1.5;
+
+        color:
+            rgba(255, 255, 255, 0.32);
+    }
+
+    /* ==========================================================
+       CURSOR
+       ========================================================== */
+
+    .cursor {
+        position: fixed;
+
+        left: 0;
+        top: 0;
+
+        z-index: 7;
+
+        width: 8px;
+        height: 8px;
+
+        margin:
+            -4px 0
+            0 -4px;
+
+        border-radius: 50%;
+
+        pointer-events: none;
+
+        background: #fff;
+
+        box-shadow:
+            0 0 10px #fff,
+            0 0 22px
+            rgba(var(--accent-rgb), 0.85);
+
+        mix-blend-mode: screen;
+    }
+
+    /* ==========================================================
+       RESPONSIVE
+       ========================================================== */
+
+    @media (max-width: 700px) {
+
+        .panel {
+            left: 14px;
+            right: 14px;
+
+            top: auto;
+            bottom: 14px;
+
+            width: auto;
+        }
+
+        h1 {
+            letter-spacing: -3px;
+        }
+
+        .content {
+            padding-bottom: 170px;
+        }
+    }
+
+    @media (pointer: coarse) {
+
+        .cursor {
+            display: none;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+        .grain {
+            animation: none;
+        }
+    }
+
+
+    .second-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 8%;
+    position: relative;
+    overflow: hidden;
+}
+
+.second-page-inner {
+    max-width: 1000px;
+    width: 100%;
+}
+
+.second-page .eyebrow {
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 25px;
+    opacity: 0.6;
+}
+
+.second-page h2 {
+    font-size: clamp(70px, 13vw, 180px);
+    line-height: 0.8;
+    font-weight: 900;
+    letter-spacing: -8px;
+    margin: 0;
+}
+
+.second-page h2 span {
+    display: block;
+    font-weight: 300;
+    letter-spacing: -5px;
+    opacity: 0.45;
+}
+
+.second-page p {
+    max-width: 500px;
+    margin-top: 50px;
+    font-size: 16px;
+    line-height: 1.8;
+    opacity: 0.65;
+}
+
+.explore-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+
+    margin-top: 40px;
+    padding: 14px 22px;
+
+    min-width: 190px;
+
+    color: rgba(255, 255, 255, 0.92);
+    text-decoration: none;
+
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+
+    border: 1px solid rgba(255, 255, 255, 0.22);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.06),
+            rgba(255, 23, 68, 0.025)
+        );
+
+    backdrop-filter: blur(12px);
+
+    box-shadow:
+        inset 0 0 20px rgba(255, 255, 255, 0.025),
+        0 0 0 rgba(255, 23, 68, 0);
+
+    overflow: hidden;
+
+    transition:
+        color 0.35s ease,
+        border-color 0.35s ease,
+        background 0.35s ease,
+        box-shadow 0.35s ease,
+        transform 0.35s ease;
+
+    clip-path: polygon(
+        0 0,
+        calc(100% - 12px) 0,
+        100% 12px,
+        100% 100%,
+        12px 100%,
+        0 calc(100% - 12px)
+    );
+}
+
+/* futuristic scanning line */
+.explore-btn::before {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    left: -120%;
+
+    width: 80%;
+    height: 100%;
+
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.14),
+        transparent
+    );
+
+    transform: skewX(-25deg);
+
+    transition: left 0.7s ease;
+}
+
+/* red futuristic glow edge */
+.explore-btn::after {
+    content: "";
+
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+
+    height: 1px;
+
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 23, 68, 0.9),
+        transparent
+    );
+
+    opacity: 0.65;
+
+    transition:
+        opacity 0.35s ease,
+        box-shadow 0.35s ease;
+}
+
+.explore-btn span {
+    position: relative;
+    z-index: 2;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 18px;
+    line-height: 1;
+
+    color: rgba(255, 255, 255, 0.8);
+
+    transition:
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        color 0.35s ease,
+        text-shadow 0.35s ease;
+}
+
+.explore-btn:hover {
+    color: #fff;
+
+    border-color: rgba(255, 23, 68, 0.65);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 23, 68, 0.08)
+        );
+
+    box-shadow:
+        0 0 25px rgba(255, 23, 68, 0.12),
+        inset 0 0 18px rgba(255, 23, 68, 0.04);
+
+    transform: translateY(-2px);
+}
+
+.explore-btn:hover::before {
+    left: 140%;
+}
+
+.explore-btn:hover::after {
+    opacity: 1;
+
+    box-shadow:
+        0 0 10px rgba(255, 23, 68, 0.8),
+        0 0 20px rgba(255, 23, 68, 0.25);
+}
+
+.explore-btn:hover span {
+    transform: translateX(7px);
+
+    color: #ff1744;
+
+    text-shadow:
+        0 0 10px rgba(255, 23, 68, 0.8);
+}
+
+/* subtle active feedback */
+.explore-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+
+/* ==========================================================
+   IMMERSIVE SCROLL SECTIONS
+   ========================================================== */
+
+.scroll-section {
+    position: relative;
+    z-index: 3;
+
+    min-height: 100vh;
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 100px 8%;
+
+    overflow: hidden;
+}
+
+/* ------------------------------------------
+   Section content
+   ------------------------------------------ */
+
+.section-inner {
+    width: min(1200px, 100%);
+}
+
+
+/* ------------------------------------------
+   Reveal animation
+   ------------------------------------------ */
+
+.reveal {
+    opacity: 0;
+
+    transform:
+        translate3d(0, 90px, 0)
+        scale(0.94);
+
+    filter: blur(10px);
+
+    transition:
+        opacity 0.9s cubic-bezier(.16, 1, .3, 1),
+        transform 1.15s cubic-bezier(.16, 1, .3, 1),
+        filter 1s cubic-bezier(.16, 1, .3, 1);
+
+    will-change:
+        transform,
+        opacity,
+        filter;
+}
+
+
+/* ------------------------------------------
+   Scrolling UP
+   ------------------------------------------ */
+
+.scroll-up .reveal {
+    transform:
+        translate3d(0, -90px, 0)
+        scale(0.94);
+}
+
+
+/* ------------------------------------------
+   Visible
+   ------------------------------------------ */
+
+.reveal.visible {
+    opacity: 1;
+
+    transform:
+        translate3d(0, 0, 0)
+        scale(1);
+
+    filter: blur(0);
+}
+
+
+/* ------------------------------------------
+   Animation delays
+   ------------------------------------------ */
+
+.reveal-delay-1 {
+    transition-delay: 0.12s;
+}
+
+.reveal-delay-2 {
+    transition-delay: 0.24s;
+}
+
+.reveal-delay-3 {
+    transition-delay: 0.36s;
+}
+
+.reveal-delay-4 {
+    transition-delay: 0.48s;
+}
+
+.reveal-delay-5 {
+    transition-delay: 0.60s;
+}
+
+/* ==========================================================
+   HERO — UNIQUE GLITCH ENTRANCE
+   ========================================================== */
+
+.hero-glitch {
+    opacity: 0;
+    transform: scale(1.08);
+    filter: blur(14px);
+}
+
+.hero-glitch.glitch-active {
+    animation: heroGlitchIn 1.8s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+@keyframes heroGlitchIn {
+
+    0% {
+        opacity: 0;
+        transform:
+            translate3d(-18px, 8px, 0)
+            scale(1.08)
+            skewX(8deg);
+        filter:
+            blur(14px)
+            contrast(1.8);
+        clip-path: inset(0 40% 0 0);
+    }
+
+    10% {
+        opacity: .35;
+        transform:
+            translate3d(14px, -4px, 0)
+            scale(1.05)
+            skewX(-6deg);
+        filter:
+            blur(7px)
+            contrast(2);
+        clip-path: inset(10% 0 15% 20%);
+    }
+
+    20% {
+        opacity: .7;
+        transform:
+            translate3d(-10px, 3px, 0)
+            scale(1.03)
+            skewX(4deg);
+        clip-path: inset(0 25% 0 5%);
+    }
+
+    32% {
+        opacity: .45;
+        transform:
+            translate3d(8px, -2px, 0)
+            scale(1.02)
+            skewX(-3deg);
+        filter:
+            blur(4px)
+            contrast(1.5);
+        clip-path: inset(18% 5% 8% 30%);
+    }
+
+    45% {
+        opacity: .9;
+        transform:
+            translate3d(-4px, 1px, 0)
+            scale(1.01);
+        filter:
+            blur(2px)
+            contrast(1.2);
+        clip-path: inset(0);
+    }
+
+    60% {
+        opacity: .75;
+        transform:
+            translate3d(3px, 0, 0)
+            scale(1.005);
+        filter:
+            blur(1px);
+    }
+
+    75% {
+        opacity: .95;
+        transform:
+            translate3d(-1px, 0, 0)
+            scale(1);
+        filter:
+            blur(.5px);
+    }
+
+    100% {
+        opacity: 1;
+        transform:
+            translate3d(0, 0, 0)
+            scale(1);
+        filter:
+            blur(0)
+            contrast(1);
+        clip-path: inset(0);
+    }
+}
+
+/* ==========================================================
+   SECTION 2 — VOID
+   ========================================================== */
+
+.section-void {
+    justify-content: flex-start;
+}
+
+.section-void h2 {
+    margin: 0;
+
+    font-size: clamp(70px, 13vw, 180px);
+    line-height: .8;
+
+    letter-spacing: -8px;
+    font-weight: 900;
+}
+
+.section-void h2 span {
+    display: block;
+
+    color: transparent;
+
+    -webkit-text-stroke: 1px rgba(255,255,255,.65);
+
+    font-weight: 300;
+}
+
+
+/* ==========================================================
+   SECTION 3 — MOTION
+   ========================================================== */
+
+.section-motion {
+    text-align: center;
+}
+
+.motion-number {
+    font-size: clamp(120px, 25vw, 320px);
+
+    font-weight: 900;
+
+    line-height: .75;
+
+    letter-spacing: -15px;
+
+    opacity: .08;
+}
+
+.section-motion h2 {
+    margin-top: -100px;
+
+    font-size: clamp(55px, 9vw, 130px);
+
+    letter-spacing: -6px;
+}
+
+
+/* ==========================================================
+   SECTION 4 — MANIFEST
+   ========================================================== */
+
+.section-manifest {
+    justify-content: flex-start;
+}
+
+.manifest-grid {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 80px;
+
+    align-items: center;
+}
+
+.manifest-title {
+    font-size: clamp(60px, 10vw, 140px);
+
+    line-height: .8;
+
+    letter-spacing: -7px;
+
+    margin: 0;
+}
+
+.manifest-title span {
+    display: block;
+
+    color: transparent;
+
+    -webkit-text-stroke: 1px rgba(255,255,255,.55);
+}
+
+.manifest-text {
+    max-width: 480px;
+
+    font-size: 16px;
+
+    line-height: 1.9;
+
+    color: rgba(255,255,255,.55);
+}
+
+
+/* ==========================================================
+   SECTION 5 — STATEMENT
+   ========================================================== */
+
+.section-statement {
+    text-align: center;
+}
+
+.statement {
+    max-width: 1100px;
+
+    margin: auto;
+
+    font-size: clamp(38px, 6vw, 90px);
+
+    line-height: 1;
+
+    letter-spacing: -4px;
+
+    font-weight: 700;
+}
+
+.statement span {
+    color: transparent;
+
+    -webkit-text-stroke: 1px rgba(255,255,255,.65);
+}
+
+
+/* ==========================================================
+   SECTION 6 — EXPLORE
+   ========================================================== */
+
+.section-explore {
+    justify-content: center;
+
+    text-align: center;
+}
+
+.explore-title {
+    margin: 0;
+
+    font-size: clamp(80px, 15vw, 210px);
+
+    line-height: .75;
+
+    letter-spacing: -10px;
+}
+
+.explore-title span {
+    display: block;
+
+    font-weight: 300;
+
+    color: transparent;
+
+    -webkit-text-stroke: 1px rgba(255,255,255,.65);
+}
+
+.explore-description {
+    max-width: 500px;
+
+    margin: 50px auto 0;
+
+    color: rgba(255,255,255,.5);
+
+    line-height: 1.8;
+}
+
+
+/* ==========================================================
+   SECTION 7 — END
+   ========================================================== */
+
+.section-end {
+    min-height: 100vh;
+
+    text-align: center;
+}
+
+.end-mark {
+    width: 80px;
+    height: 80px;
+
+    margin: 0 auto 40px;
+
+    border: 1px solid rgba(255,255,255,.35);
+
+    border-radius: 50%;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    font-size: 20px;
+}
+
+.end-title {
+    margin: 0;
+
+    font-size: clamp(60px, 11vw, 150px);
+
+    line-height: .8;
+
+    letter-spacing: -8px;
+}
+
+.end-title span {
+    display: block;
+
+    color: transparent;
+
+    -webkit-text-stroke: 1px rgba(255,255,255,.6);
+}
+
+.end-subtitle {
+    margin-top: 45px;
+
+    color: rgba(255,255,255,.4);
+
+    letter-spacing: 4px;
+
+    text-transform: uppercase;
+
+    font-size: 10px;
+}
+
+
+/* ==========================================================
+   FLOATING SECTION INDICATOR
+   ========================================================== */
+
+.section-counter {
+    position: fixed;
+
+    left: 25px;
+    bottom: 25px;
+
+    z-index: 6;
+
+    font-size: 10px;
+
+    letter-spacing: 3px;
+
+    color: rgba(255,255,255,.45);
+
+    mix-blend-mode: difference;
+}
+
+
+/* ==========================================================
+   MOBILE
+   ========================================================== */
+
+@media (max-width: 700px) {
+
+    .scroll-section {
+        padding: 80px 25px;
+    }
+
+    .manifest-grid {
+        grid-template-columns: 1fr;
+
+        gap: 40px;
+    }
+
+    .manifest-title {
+        letter-spacing: -4px;
+    }
+
+    .section-void h2,
+    .explore-title,
+    .end-title {
+        letter-spacing: -5px;
+    }
+
+    .section-counter {
+        left: 15px;
+        bottom: 15px;
+    }
+}
+
+/* ==========================================================
+   FLUID CONTROL TOGGLE
+   ========================================================== */
+
+.fluid-control-toggle {
+    position: fixed;
+    top: 22px;
+    right: 22px;
+    z-index: 6;
+
+    padding: 11px 16px;
+
+    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(0,0,0,.45);
+    color: rgba(255,255,255,.8);
+
+    backdrop-filter: blur(16px);
+
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+
+    cursor: pointer;
+
+    transition:
+        background .3s ease,
+        border-color .3s ease,
+        color .3s ease,
+        transform .3s ease;
+}
+
+.fluid-control-toggle:hover {
+    color: #fff;
+    border-color: rgba(255,255,255,.5);
+    background: rgba(255,255,255,.08);
+    transform: translateY(-2px);
+}
+
+
+/* Panel hidden by default */
+
+#fluidPanel {
+    display: none;
+}
+
+#fluidPanel.open {
+    display: block;
+}
+
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+    .fluid-control-toggle {
+        top: 14px;
+        right: 14px;
+    }
+
+    #fluidPanel.open {
+        display: block;
+    }
+}
+
+/* ==========================================================
+   SECTION 8 — THE UNKNOWN
+   ========================================================== */
+
+.section-unknown {
+    min-height: 120vh;
+    justify-content: flex-start;
+}
+
+.unknown-title {
+    margin: 0;
+    font-size: clamp(80px, 16vw, 230px);
+    line-height: .72;
+    letter-spacing: -10px;
+    font-weight: 900;
+}
+
+.unknown-title span {
+    display: block;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.65);
+    font-weight: 300;
+}
+
+.unknown-text {
+    max-width: 560px;
+    margin: 60px 0 0;
+    font-size: 17px;
+    line-height: 1.9;
+    color: rgba(255,255,255,.5);
+}
+
+.unknown-line {
+    width: min(700px, 80%);
+    height: 1px;
+    margin-top: 80px;
+    background: linear-gradient(
+        90deg,
+        rgba(255,255,255,.6),
+        transparent
+    );
+}
+
+
+/* ==========================================================
+   SECTION 9 — TIME
+   ========================================================== */
+
+.section-time {
+    min-height: 130vh;
+}
+
+.time-title {
+    margin: 0;
+    font-size: clamp(75px, 14vw, 210px);
+    line-height: .75;
+    letter-spacing: -9px;
+    font-weight: 900;
+}
+
+.time-title span {
+    display: block;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.55);
+    font-weight: 300;
+}
+
+.time-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 90px;
+}
+
+.time-card {
+    min-height: 240px;
+    padding: 30px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.025);
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform .5s ease, border-color .5s ease;
+}
+
+.time-card:hover {
+    transform: translateY(-10px);
+    border-color: rgba(255,255,255,.35);
+}
+
+.time-card span {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,.35);
+}
+
+.time-card strong {
+    font-size: 30px;
+    letter-spacing: -1px;
+}
+
+.time-card p {
+    margin: 0;
+    max-width: none;
+    font-size: 13px;
+    line-height: 1.7;
+    color: rgba(255,255,255,.4);
+}
+
+
+/* ==========================================================
+   SECTION 10 — LIGHT
+   ========================================================== */
+
+.section-light {
+    text-align: center;
+}
+
+.light-content {
+    position: relative;
+    min-height: 800px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.light-title {
+    position: relative;
+    z-index: 2;
+    margin: 0;
+    font-size: clamp(80px, 16vw, 240px);
+    line-height: .7;
+    letter-spacing: -11px;
+    font-weight: 900;
+}
+
+.light-title span {
+    display: block;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.6);
+    font-weight: 300;
+}
+
+.light-text {
+    position: relative;
+    z-index: 2;
+    max-width: 520px;
+    margin: 60px auto 0;
+    color: rgba(255,255,255,.5);
+    line-height: 1.9;
+}
+
+.light-orbit {
+    position: absolute;
+    width: min(600px, 70vw);
+    height: min(600px, 70vw);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 50%;
+    animation: voidOrbit 12s linear infinite;
+}
+
+.light-orbit::before,
+.light-orbit::after {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    border: 1px solid rgba(255,255,255,.05);
+    border-radius: 50%;
+}
+
+.light-orbit::after {
+    inset: 25%;
+}
+
+.orbit-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+        0 0 25px #fff,
+        0 0 70px rgba(255,255,255,.5);
+}
+
+@keyframes voidOrbit {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ==========================================================
+   SECTION 11 — COLLISION
+   ========================================================== */
+
+.section-collision {
+    text-align: center;
+    overflow: hidden;
+}
+
+.collision-title {
+    margin: 0;
+    font-size: clamp(75px, 15vw, 220px);
+    line-height: .7;
+    letter-spacing: -10px;
+    font-weight: 900;
+}
+
+.collision-title span {
+    display: block;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.6);
+}
+
+.collision-lines {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    margin: 70px auto 0;
+    overflow: hidden;
+}
+
+.collision-lines span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 140%;
+    height: 1px;
+    background: rgba(255,255,255,.18);
+    transform-origin: center;
+}
+
+.collision-lines span:nth-child(1) {
+    transform: rotate(-25deg);
+}
+
+.collision-lines span:nth-child(2) {
+    transform: rotate(-12deg);
+}
+
+.collision-lines span:nth-child(3) {
+    transform: rotate(0deg);
+}
+
+.collision-lines span:nth-child(4) {
+    transform: rotate(12deg);
+}
+
+.collision-lines span:nth-child(5) {
+    transform: rotate(25deg);
+}
+
+.collision-text {
+    max-width: 500px;
+    margin: 50px auto 0;
+    color: rgba(255,255,255,.45);
+    line-height: 1.9;
+}
+
+
+/* ==========================================================
+   SECTION 12 — FIND YOUR WAY
+   ========================================================== */
+
+.section-way {
+    justify-content: flex-start;
+}
+
+.way-content {
+    position: relative;
+    min-height: 700px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.way-title {
+    margin: 0;
+    font-size: clamp(90px, 17vw, 250px);
+    line-height: .7;
+    letter-spacing: -12px;
+    font-weight: 900;
+}
+
+.way-title span {
+    display: block;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.6);
+    font-weight: 300;
+}
+
+.way-text {
+    max-width: 500px;
+    margin: 60px 0 0;
+    color: rgba(255,255,255,.45);
+    line-height: 1.9;
+}
+
+.way-marker {
+    position: absolute;
+    right: 8%;
+    top: 50%;
+    width: 130px;
+    height: 130px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    animation: markerFloat 4s ease-in-out infinite;
+}
+
+.way-marker::before {
+    content: "";
+    position: absolute;
+    inset: 15px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 50%;
+}
+
+.way-marker span {
+    font-size: 35px;
+    font-weight: 200;
+}
+
+@keyframes markerFloat {
+    0%, 100% {
+        transform: translateY(-50%);
+    }
+
+    50% {
+        transform: translateY(calc(-50% - 20px));
+    }
+}
+
+
+/* ==========================================================
+   SECTION 13 — THE VOID IS WAITING
+   ========================================================== */
+
+.section-waiting {
+    min-height: 120vh;
+    text-align: center;
+}
+
+.waiting-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.waiting-title {
+    margin: 0;
+    font-size: clamp(75px, 15vw, 220px);
+    line-height: .7;
+    letter-spacing: -10px;
+    font-weight: 900;
+}
+
+.waiting-title span {
+    display: block;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.65);
+    font-weight: 300;
+}
+
+.waiting-text {
+    max-width: 500px;
+    margin: 60px auto 0;
+    color: rgba(255,255,255,.45);
+    line-height: 1.8;
+}
+
+.waiting-content .explore-btn {
+    margin-top: 45px;
+}
+
+
+/* ==========================================================
+   SECTION 14 — CONTINUE
+   ========================================================== */
+
+.section-continue {
+    min-height: 120vh;
+    text-align: center;
+}
+
+.continue-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.continue-symbol {
+    width: 110px;
+    height: 110px;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 45px;
+    margin-bottom: 50px;
+    animation: infinitePulse 3s ease-in-out infinite;
+}
+
+.continue-title {
+    margin: 0;
+    font-size: clamp(70px, 14vw, 200px);
+    line-height: .72;
+    letter-spacing: -9px;
+    font-weight: 900;
+}
+
+.continue-title span {
+    display: block;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.6);
+    font-weight: 300;
+}
+
+.continue-text {
+    margin-top: 50px;
+    color: rgba(255,255,255,.4);
+}
+
+.continue-link {
+    margin-top: 35px;
+    color: rgba(255,255,255,.8);
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    transition: .4s ease;
+}
+
+.continue-link span {
+    display: inline-block;
+    margin-left: 10px;
+    transition: transform .4s ease;
+}
+
+.continue-link:hover {
+    color: #fff;
+}
+
+.continue-link:hover span {
+    transform: translate(6px, -6px);
+}
+
+@keyframes infinitePulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255,255,255,0);
+    }
+
+    50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 40px rgba(255,255,255,.12);
+    }
+}
+
+
+/* ==========================================================
+   NEW SECTIONS — MOBILE
+   ========================================================== */
+
+@media (max-width: 700px) {
+
+    .unknown-title,
+    .time-title,
+    .light-title,
+    .collision-title,
+    .way-title,
+    .waiting-title,
+    .continue-title {
+        letter-spacing: -5px;
+    }
+
+    .time-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        margin-top: 60px;
+    }
+
+    .time-card {
+        min-height: 190px;
+    }
+
+    .light-content {
+        min-height: 650px;
+    }
+
+    .light-orbit {
+        width: 90vw;
+        height: 90vw;
+    }
+
+    .way-marker {
+        position: relative;
+        right: auto;
+        top: auto;
+        margin-top: 70px;
+    }
+
+    .collision-lines {
+        height: 120px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="fluid"></canvas>
+
+<div class="vignette"></div>
+<div class="grain"></div>
+
+
+<!-- ==========================================================
+     DEMO CONTENT
+     ========================================================== -->
+
+<div class="content hero-glitch">
+
+    <div class="content-inner">
+
+        <div class="eyebrow">
+            Infinite fluid field
+        </div>
+
+        <h1>
+            BLACK
+            <span>SMOKE</span>
+        </h1>
+
+        <p>
+            The background continuously moves on its own.
+            Cursor movement injects velocity and color into
+            the same fluid field, making the entire background
+            feel like a living surface instead of a simple
+            mouse trail.
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- ================= SECOND SECTION ================= -->
+
+<section class="second-page">
+
+    <div class="second-page-inner">
+
+        <div class="eyebrow reveal">
+            Enter the unknown
+        </div>
+
+        <h2 class="reveal reveal-delay-1">
+            BEYOND
+            <span>THE VOID</span>
+        </h2>
+
+        <p class="reveal reveal-delay-2">
+            A space without limits. A world where motion,
+            light and darkness collide to create something
+            completely unexpected.
+        </p>
+
+        <a href="#" class="explore-btn reveal reveal-delay-3">
+            EXPLORE
+            <span>→</span>
+        </a>
+
+    </div>
+
+</section>
+
+<!-- ==========================================================
+     SECTION 3 — MOTION
+     ========================================================== -->
+
+<section class="scroll-section section-motion">
+
+    <div class="section-inner">
+
+        <div class="eyebrow reveal">
+            Everything moves
+        </div>
+
+        <!-- <div class="motion-number reveal reveal-delay-1">
+            03
+        </div> -->
+
+        <h2 class="reveal reveal-delay-2">
+            MOTION IS
+            <span>EVERYTHING</span>
+        </h2>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 4 — MANIFEST
+     ========================================================== -->
+
+<section class="scroll-section section-manifest">
+
+    <div class="section-inner">
+
+        <div class="manifest-grid">
+
+            <div>
+
+                <div class="eyebrow reveal">
+                    Digital atmosphere
+                </div>
+
+                <h2 class="manifest-title reveal reveal-delay-1">
+                    SHAPE
+                    <span>THE DARK</span>
+                </h2>
+
+            </div>
+
+            <div>
+
+                <p class="manifest-text reveal reveal-delay-2">
+                    There is no fixed form here.
+                    Every movement changes the surface.
+                    Every interaction leaves a trace.
+                    Every moment creates something different.
+                </p>
+
+                <p class="manifest-text reveal reveal-delay-3">
+                    The interface becomes less like a website
+                    and more like an environment.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 5 — STATEMENT
+     ========================================================== -->
+
+<section class="scroll-section section-statement">
+
+    <div class="section-inner">
+
+        <div class="eyebrow reveal">
+            A different kind of interface
+        </div>
+
+        <div class="statement reveal reveal-delay-1">
+
+            DON'T
+            <span>WATCH</span>
+            THE
+            <span>WORLD.</span>
+
+            <br>
+
+            MOVE
+            <span>THROUGH</span>
+            IT.
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 6 — EXPLORE
+     ========================================================== -->
+
+<section class="scroll-section section-explore">
+
+    <div class="section-inner">
+
+        <div class="eyebrow reveal">
+            Continue
+        </div>
+
+        <h2 class="explore-title reveal reveal-delay-1">
+
+            KEEP
+            <span>GOING</span>
+
+        </h2>
+
+        <p class="explore-description reveal reveal-delay-2">
+
+            The surface never stops.
+            Neither should the experience.
+
+        </p>
+
+       <a href="void.html" class="explore-btn reveal reveal-delay-3">
+
+            ENTER THE VOID
+
+            <span>→</span>
+
+        </a>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 7 — END
+     ========================================================== -->
+
+<section class="scroll-section section-end">
+
+    <div class="section-inner">
+
+        <div class="end-mark reveal">
+            ∞
+        </div>
+
+        <h2 class="end-title reveal reveal-delay-1">
+
+            NOTHING
+            <span>ENDS.</span>
+
+        </h2>
+
+        <div class="end-subtitle reveal reveal-delay-2">
+
+            Infinite / Fluid / Alive
+
+        </div>
+
+    </div>
+
+</section>
+
+<!-- SECTION END RA -->
+
+<!-- ==========================================================
+     SECTION 8 — UNKNOWN
+     ========================================================== -->
+
+<section class="scroll-section section-unknown">
+
+    <div class="section-inner">
+
+        <div class="eyebrow reveal">
+            There is more beyond the surface
+        </div>
+
+        <h2 class="unknown-title reveal reveal-delay-1">
+            ENTER
+            <span>THE UNKNOWN</span>
+        </h2>
+
+        <p class="unknown-text reveal reveal-delay-2">
+            Every layer hides another.
+            Every movement reveals something new.
+            The deeper you go, the less certain the world becomes.
+        </p>
+
+        <div class="unknown-line reveal reveal-delay-3"></div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 9 — TIME
+     ========================================================== -->
+
+<section class="scroll-section section-time">
+
+    <div class="section-inner">
+
+        <div class="eyebrow reveal">
+            Beyond perception
+        </div>
+
+        <h2 class="time-title reveal reveal-delay-1">
+            TIME
+            <span>HAS NO SHAPE</span>
+        </h2>
+
+        <div class="time-grid">
+
+            <div class="time-card reveal reveal-delay-2">
+                <span>01</span>
+                <strong>PAST</strong>
+                <p>
+                    What existed before the moment became memory.
+                </p>
+            </div>
+
+            <div class="time-card reveal reveal-delay-3">
+                <span>02</span>
+                <strong>PRESENT</strong>
+                <p>
+                    The only place where movement actually happens.
+                </p>
+            </div>
+
+            <div class="time-card reveal reveal-delay-4">
+                <span>03</span>
+                <strong>FUTURE</strong>
+                <p>
+                    A direction that has not yet taken form.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 10 — LIGHT
+     ========================================================== -->
+
+<section class="scroll-section section-light">
+
+    <div class="section-inner">
+
+        <div class="light-content">
+
+            <div class="eyebrow reveal">
+                Form through contrast
+            </div>
+
+            <h2 class="light-title reveal reveal-delay-1">
+                LIGHT
+                <span>BECOMES FORM</span>
+            </h2>
+
+            <p class="light-text reveal reveal-delay-2">
+                Darkness is not the absence of something.
+                It is the space where something has yet to appear.
+            </p>
+
+            <div class="light-orbit reveal reveal-delay-3">
+                <div class="orbit-core"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 11 — COLLISION
+     ========================================================== -->
+
+<section class="scroll-section section-collision">
+
+    <div class="section-inner">
+
+        <div class="eyebrow reveal">
+            Nothing remains still
+        </div>
+
+        <h2 class="collision-title reveal reveal-delay-1">
+            EVERYTHING
+            <span>COLLIDES</span>
+        </h2>
+
+        <div class="collision-lines reveal reveal-delay-2">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <p class="collision-text reveal reveal-delay-3">
+            Motion creates friction.
+            Friction creates energy.
+            Energy creates change.
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 12 — FIND YOUR WAY
+     ========================================================== -->
+
+<section class="scroll-section section-way">
+
+    <div class="section-inner">
+
+        <div class="way-content">
+
+            <div class="eyebrow reveal">
+                There is no map
+            </div>
+
+            <h2 class="way-title reveal reveal-delay-1">
+                FIND
+                <span>YOUR WAY</span>
+            </h2>
+
+            <p class="way-text reveal reveal-delay-2">
+                You don't need to know where the void ends.
+                You only need to decide where you move next.
+            </p>
+
+            <div class="way-marker reveal reveal-delay-3">
+                <span>+</span>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 13 — THE VOID IS WAITING
+     ========================================================== -->
+
+<section class="scroll-section section-waiting">
+
+    <div class="section-inner">
+
+        <div class="waiting-content">
+
+            <div class="eyebrow reveal">
+                Final threshold
+            </div>
+
+            <h2 class="waiting-title reveal reveal-delay-1">
+                THE VOID
+                <span>IS WAITING</span>
+            </h2>
+
+            <p class="waiting-text reveal reveal-delay-2">
+                Everything you have seen so far was only the surface.
+            </p>
+
+            <a href="void.html"
+               class="explore-btn reveal reveal-delay-3">
+
+                ENTER THE VOID
+
+                <span>→</span>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================================
+     SECTION 14 — CONTINUE
+     ========================================================== -->
+
+<section class="scroll-section section-continue">
+
+    <div class="section-inner">
+
+        <div class="continue-content">
+
+            <div class="continue-symbol reveal">
+                ∞
+            </div>
+
+            <h2 class="continue-title reveal reveal-delay-1">
+                THERE IS
+                <span>NO END</span>
+            </h2>
+
+            <p class="continue-text reveal reveal-delay-2">
+                The experience continues beyond this point.
+            </p>
+
+            <a href="#"
+               class="continue-link reveal reveal-delay-3">
+
+                CONTINUE
+
+                <span>↗</span>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
+
+<!-- ==========================================================
+     CONTROLS
+     ========================================================== -->
+<button class="fluid-control-toggle" id="fluidControlToggle">
+    FLUID CONTROLS
+</button>
+
+<div class="panel" id="fluidPanel">
+
+    <div class="panel-title">
+        Fluid Controls
+    </div>
+
+
+    <!-- Color presets -->
+
+    <label>
+        Accent color
+    </label>
+
+    <div class="swatches">
+
+        <button
+            class="swatch active"
+            data-color="#ff1744"
+            style="background:#ff1744"
+            aria-label="Red">
+        </button>
+
+        <button
+            class="swatch"
+            data-color="#ff3b81"
+            style="background:#ff3b81"
+            aria-label="Pink">
+        </button>
+
+        <button
+            class="swatch"
+            data-color="#ff5a1f"
+            style="background:#ff5a1f"
+            aria-label="Orange">
+        </button>
+
+        <button
+            class="swatch"
+            data-color="#ad3cff"
+            style="background:#ad3cff"
+            aria-label="Violet">
+        </button>
+
+        <button
+            class="swatch"
+            data-color="#00e676"
+            style="background:#00e676"
+            aria-label="Green">
+        </button>
+
+        <button
+            class="swatch"
+            data-color="#00d9ff"
+            style="background:#00d9ff"
+            aria-label="Cyan">
+        </button>
+
+    </div>
+
+
+    <!-- Custom color -->
+
+    <div class="row">
+
+        <input
+            id="colorPicker"
+            type="color"
+            value="#ff1744"
+            aria-label="Pick accent color"
+        >
+
+        <span
+            id="colorValue"
+            class="value">
+            #FF1744
+        </span>
+
+    </div>
+
+
+    <!-- Sliders -->
+
+    <div style="margin-top:12px">
+
+        <div class="row">
+
+            <div style="flex:1">
+
+                <label for="motion">
+                    Ambient motion
+                </label>
+
+                <input
+                    id="motion"
+                    type="range"
+                    min="0"
+                    max="200"
+                    value="0"
+                >
+
+            </div>
+
+            <span
+                id="motionValue"
+                class="value">
+                0
+            </span>
+
+        </div>
+
+
+        <div class="row">
+
+            <div style="flex:1">
+
+                <label for="smoke">
+                    Smoke amount
+                </label>
+
+                <input
+                    id="smoke"
+                    type="range"
+                    min="20"
+                    max="160"
+                    value="90"
+                >
+
+            </div>
+
+            <span
+                id="smokeValue"
+                class="value">
+                90
+            </span>
+
+        </div>
+
+
+        <div class="row">
+
+            <div style="flex:1">
+
+                <label for="fade">
+                    Dissipation
+                </label>
+
+                <input
+                    id="fade"
+                    type="range"
+                    min="5"
+                    max="100"
+                    value="42"
+                >
+
+            </div>
+
+            <span
+                id="fadeValue"
+                class="value">
+                42
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="tip">
+        Move slowly for broad smoke.
+        Move quickly for long fluid streaks.
+        The field sweeps smoothly right-to-left and left-to-right even when the cursor stops.
+    </div>
+
+</div>
+
+
+<div class="cursor"></div>
+
+<div class="section-counter">
+    01 / 14
+</div>
+
+<script>
+
+/*
+==================================================================
+INFINITE BLACK + COLOR FLUID
+==================================================================
+
+Architecture:
+
+    Mouse
+       ↓
+    velocity field
+       ↓
+    vorticity
+       ↓
+    pressure
+       ↓
+    advection
+       ↓
+    dye / smoke
+       ↓
+    black background
+
+Unlike a normal cursor trail, the field continues evolving
+without pointer movement.
+
+Only TWO conceptual colors exist:
+
+    BLACK
+    + selected ACCENT COLOR
+
+Different brightness values of the selected accent create
+the internal smoke depth.
+
+==================================================================
+*/
+
+
+window.addEventListener("load", () => {
+    initFluid();
+});
+
+
+function initFluid() {
+
+    const canvas =
+        document.getElementById("fluid");
+
+
+    /*
+    ==============================================================
+    CONFIGURATION
+    ==============================================================
+    */
+
+    const config = {
+
+        /*
+            Fluid simulation resolution.
+
+            Lower = faster
+            Higher = more detailed
+        */
+        SIM_RESOLUTION: 128,
+
+        /*
+            Smoke resolution.
+        */
+        DYE_RESOLUTION: 1024,
+
+        /*
+            How quickly smoke disappears.
+
+            Smaller = longer trails
+            Larger  = cleaner/faster fade
+        */
+        DENSITY_DISSIPATION: 1.0,
+
+
+        /*
+            Velocity persistence.
+
+            Smaller = more fluid-like residual movement.
+        */
+        VELOCITY_DISSIPATION: 0.98,
+
+
+        /*
+            Pressure solve.
+        */
+        PRESSURE: 0.08,
+
+        PRESSURE_ITERATIONS: 24,
+
+
+        /*
+            Vorticity controls how much
+            the smoke curls and rolls.
+        */
+        CURL: 9,
+
+
+        /*
+            Cursor smoke radius.
+        */
+        SPLAT_RADIUS: 0.28,
+
+
+        /*
+            Cursor movement force.
+        */
+        SPLAT_FORCE: 5200,
+
+
+        /*
+            Lighting/shading.
+        */
+        SHADING: false,
+
+
+        /*
+        ==========================================================
+        AUTONOMOUS BACKGROUND MOTION
+        ==========================================================
+
+        These create extremely subtle internal currents.
+
+        This is what makes the background continue moving
+        when the cursor is completely still.
+        */
+
+        AUTO_FLOW: false,
+
+        AUTO_FLOW_STRENGTH: 0,
+
+        AUTO_FLOW_INTERVAL: 0.12,
+
+        AUTO_FLOW_SIZE: 0.075,
+
+        /* Smooth horizontal sweep:
+           right -> pause -> left -> pause -> right */
+        AUTO_FLOW_SPEED: 0.38,
+
+        AUTO_FLOW_SWEEP: 0.42,
+
+
+        /*
+        ==========================================================
+        SELECTED COLOR
+        ==========================================================
+        */
+
+        COLOR: {
+            r: 1,
+            g: 0.0902,
+            b: 0.2667
+        }
+
+    };
+
+
+    /*
+    ==============================================================
+    TIME STATE
+    ==============================================================
+    */
+
+    let lastUpdateTime =
+        Date.now();
+
+    let accumulated =
+        0;
+
+    let flowTime =
+        0;
+
+
+    /*
+    ==============================================================
+    POINTER
+    ==============================================================
+    */
+
+    const pointer = {
+
+        id: -1,
+
+        texcoordX: 0.5,
+
+        texcoordY: 0.5,
+
+        prevTexcoordX: 0.5,
+
+        prevTexcoordY: 0.5,
+
+        deltaX: 0,
+
+        deltaY: 0,
+
+        down: false,
+
+        moved: false,
+
+        color: {
+            ...config.COLOR
+        }
+
+    };
+
+
+    const pointers = [
+        pointer
+    ];
+
+
+    /*
+    ==============================================================
+    WEBGL
+    ==============================================================
+    */
+
+    const {
+        gl,
+        ext
+    } = getWebGLContext(canvas);
+
+
+    if (!gl) {
+
+        document.body.innerHTML = `
+            <div
+                style="
+                    padding:40px;
+                    color:white;
+                    font-family:system-ui;
+                    background:#000;
+                    height:100vh
+                "
+            >
+                WebGL is not available
+                in this browser/device.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    /*
+        Older GPUs without linear filtering use
+        a lower dye resolution.
+    */
+
+    if (!ext.supportLinearFiltering) {
+
+        config.DYE_RESOLUTION = 512;
+
+        config.SHADING = false;
+
+    }
+
+
+    /*
+    ==============================================================
+    BASE VERTEX SHADER
+    ==============================================================
+    */
+
+    const baseVertexShader =
+        compileShader(
+            gl.VERTEX_SHADER,
+
+            `
+            precision highp float;
+
+            attribute vec2 aPosition;
+
+            varying vec2 vUv;
+
+            varying vec2 vL;
+            varying vec2 vR;
+            varying vec2 vT;
+            varying vec2 vB;
+
+            uniform vec2 texelSize;
+
+
+            void main () {
+
+                vUv =
+                    aPosition *
+                    0.5 +
+                    0.5;
+
+
+                vL =
+                    vUv -
+                    vec2(
+                        texelSize.x,
+                        0.0
+                    );
+
+
+                vR =
+                    vUv +
+                    vec2(
+                        texelSize.x,
+                        0.0
+                    );
+
+
+                vT =
+                    vUv +
+                    vec2(
+                        0.0,
+                        texelSize.y
+                    );
+
+
+                vB =
+                    vUv -
+                    vec2(
+                        0.0,
+                        texelSize.y
+                    );
+
+
+                gl_Position =
+                    vec4(
+                        aPosition,
+                        0.0,
+                        1.0
+                    );
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    COPY SHADER
+    ==============================================================
+    */
+
+    const copyShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision mediump float;
+
+            varying highp vec2 vUv;
+
+            uniform sampler2D uTexture;
+
+
+            void main () {
+
+                gl_FragColor =
+                    texture2D(
+                        uTexture,
+                        vUv
+                    );
+
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    CLEAR SHADER
+    ==============================================================
+    */
+
+    const clearShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision mediump float;
+
+            varying highp vec2 vUv;
+
+            uniform sampler2D uTexture;
+
+            uniform float value;
+
+
+            void main () {
+
+                gl_FragColor =
+                    value *
+                    texture2D(
+                        uTexture,
+                        vUv
+                    );
+
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    DISPLAY SHADER
+    ==============================================================
+    */
+
+    const displayShaderSource = `
+
+        precision highp float;
+
+
+        varying vec2 vUv;
+
+        varying vec2 vL;
+        varying vec2 vR;
+        varying vec2 vT;
+        varying vec2 vB;
+
+
+        uniform sampler2D uTexture;
+
+
+        uniform vec2 texelSize;
+
+
+        void main () {
+
+            vec3 c =
+                texture2D(
+                    uTexture,
+                    vUv
+                ).rgb;
+
+
+        #ifdef SHADING
+
+            vec3 lc =
+                texture2D(
+                    uTexture,
+                    vL
+                ).rgb;
+
+
+            vec3 rc =
+                texture2D(
+                    uTexture,
+                    vR
+                ).rgb;
+
+
+            vec3 tc =
+                texture2D(
+                    uTexture,
+                    vT
+                ).rgb;
+
+
+            vec3 bc =
+                texture2D(
+                    uTexture,
+                    vB
+                ).rgb;
+
+
+            float dx =
+                length(rc) -
+                length(lc);
+
+
+            float dy =
+                length(tc) -
+                length(bc);
+
+
+            vec3 n =
+                normalize(
+                    vec3(
+                        dx,
+                        dy,
+                        length(texelSize)
+                    )
+                );
+
+
+            vec3 l =
+                vec3(
+                    0.0,
+                    0.0,
+                    1.0
+                );
+
+
+            float diffuse =
+                0.90 +
+                0.10 *
+                clamp(
+                    dot(n, l),
+                    0.0,
+                    1.0
+                );
+
+
+            c *= diffuse;
+
+        #endif
+
+
+            float a =
+                max(
+                    c.r,
+                    max(
+                        c.g,
+                        c.b
+                    )
+                );
+
+
+            gl_FragColor =
+                vec4(
+                    c,
+                    a
+                );
+
+        }
+    `;
+
+
+    /*
+    ==============================================================
+    SPLAT SHADER
+    ==============================================================
+    */
+
+    const splatShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision highp float;
+
+            varying vec2 vUv;
+
+
+            uniform sampler2D uTarget;
+
+            uniform float aspectRatio;
+
+            uniform vec3 color;
+
+            uniform vec2 point;
+
+            uniform float radius;
+
+
+            void main () {
+
+                vec2 p =
+                    vUv -
+                    point.xy;
+
+
+                p.x *=
+                    aspectRatio;
+
+
+                vec3 splat =
+                    exp(
+                        -dot(
+                            p,
+                            p
+                        )
+                        /
+                        radius
+                    )
+                    *
+                    color;
+
+
+                vec3 base =
+                    texture2D(
+                        uTarget,
+                        vUv
+                    ).xyz;
+
+
+                gl_FragColor =
+                    vec4(
+                        base + splat,
+                        1.0
+                    );
+
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    ADVECTION SHADER
+    ==============================================================
+    */
+
+    const advectionShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision highp float;
+
+            varying vec2 vUv;
+
+
+            uniform sampler2D uVelocity;
+
+            uniform sampler2D uSource;
+
+
+            uniform vec2 texelSize;
+
+            uniform vec2 dyeTexelSize;
+
+
+            uniform float dt;
+
+            uniform float dissipation;
+
+
+            vec4 bilerp(
+                sampler2D sam,
+                vec2 uv,
+                vec2 tsize
+            ) {
+
+                vec2 st =
+                    uv /
+                    tsize -
+                    0.5;
+
+
+                vec2 iuv =
+                    floor(st);
+
+
+                vec2 fuv =
+                    fract(st);
+
+
+                vec4 a =
+                    texture2D(
+                        sam,
+                        (
+                            iuv +
+                            vec2(
+                                0.5,
+                                0.5
+                            )
+                        )
+                        *
+                        tsize
+                    );
+
+
+                vec4 b =
+                    texture2D(
+                        sam,
+                        (
+                            iuv +
+                            vec2(
+                                1.5,
+                                0.5
+                            )
+                        )
+                        *
+                        tsize
+                    );
+
+
+                vec4 c =
+                    texture2D(
+                        sam,
+                        (
+                            iuv +
+                            vec2(
+                                0.5,
+                                1.5
+                            )
+                        )
+                        *
+                        tsize
+                    );
+
+
+                vec4 d =
+                    texture2D(
+                        sam,
+                        (
+                            iuv +
+                            vec2(
+                                1.5,
+                                1.5
+                            )
+                        )
+                        *
+                        tsize
+                    );
+
+
+                return mix(
+                    mix(
+                        a,
+                        b,
+                        fuv.x
+                    ),
+
+                    mix(
+                        c,
+                        d,
+                        fuv.x
+                    ),
+
+                    fuv.y
+                );
+            }
+
+
+            void main () {
+
+            #ifdef MANUAL_FILTERING
+
+                vec2 coord =
+                    vUv
+                    -
+                    dt
+                    *
+                    bilerp(
+                        uVelocity,
+                        vUv,
+                        texelSize
+                    ).xy
+                    *
+                    texelSize;
+
+
+                vec4 result =
+                    bilerp(
+                        uSource,
+                        coord,
+                        dyeTexelSize
+                    );
+
+            #else
+
+                vec2 coord =
+                    vUv
+                    -
+                    dt
+                    *
+                    texture2D(
+                        uVelocity,
+                        vUv
+                    ).xy
+                    *
+                    texelSize;
+
+
+                vec4 result =
+                    texture2D(
+                        uSource,
+                        coord
+                    );
+
+            #endif
+
+
+                gl_FragColor =
+                    result
+                    /
+                    (
+                        1.0
+                        +
+                        dissipation *
+                        dt
+                    );
+            }
+
+            `,
+            ext.supportLinearFiltering
+                ? null
+                : ["MANUAL_FILTERING"]
+        );
+
+
+    /*
+    ==============================================================
+    DIVERGENCE
+    ==============================================================
+    */
+
+    const divergenceShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision mediump float;
+
+            varying highp vec2 vUv;
+
+            varying highp vec2 vL;
+            varying highp vec2 vR;
+            varying highp vec2 vT;
+            varying highp vec2 vB;
+
+
+            uniform sampler2D uVelocity;
+
+
+            void main () {
+
+                float L =
+                    texture2D(
+                        uVelocity,
+                        vL
+                    ).x;
+
+
+                float R =
+                    texture2D(
+                        uVelocity,
+                        vR
+                    ).x;
+
+
+                float T =
+                    texture2D(
+                        uVelocity,
+                        vT
+                    ).y;
+
+
+                float B =
+                    texture2D(
+                        uVelocity,
+                        vB
+                    ).y;
+
+
+                vec2 C =
+                    texture2D(
+                        uVelocity,
+                        vUv
+                    ).xy;
+
+
+                if(vL.x < 0.0)
+                    L = -C.x;
+
+
+                if(vR.x > 1.0)
+                    R = -C.x;
+
+
+                if(vT.y > 1.0)
+                    T = -C.y;
+
+
+                if(vB.y < 0.0)
+                    B = -C.y;
+
+
+                float div =
+                    0.5 *
+                    (
+                        R -
+                        L +
+                        T -
+                        B
+                    );
+
+
+                gl_FragColor =
+                    vec4(
+                        div,
+                        0.0,
+                        0.0,
+                        1.0
+                    );
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    CURL
+    ==============================================================
+    */
+
+    const curlShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision mediump float;
+
+            varying highp vec2 vUv;
+
+            varying highp vec2 vL;
+            varying highp vec2 vR;
+            varying highp vec2 vT;
+            varying highp vec2 vB;
+
+
+            uniform sampler2D uVelocity;
+
+
+            void main () {
+
+                float L =
+                    texture2D(
+                        uVelocity,
+                        vL
+                    ).y;
+
+
+                float R =
+                    texture2D(
+                        uVelocity,
+                        vR
+                    ).y;
+
+
+                float T =
+                    texture2D(
+                        uVelocity,
+                        vT
+                    ).x;
+
+
+                float B =
+                    texture2D(
+                        uVelocity,
+                        vB
+                    ).x;
+
+
+                float vorticity =
+                    R -
+                    L -
+                    T +
+                    B;
+
+
+                gl_FragColor =
+                    vec4(
+                        0.5 *
+                        vorticity,
+                        0.0,
+                        0.0,
+                        1.0
+                    );
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    VORTICITY
+    ==============================================================
+    */
+
+    const vorticityShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision highp float;
+
+
+            varying vec2 vUv;
+
+            varying vec2 vL;
+            varying vec2 vR;
+            varying vec2 vT;
+            varying vec2 vB;
+
+
+            uniform sampler2D uVelocity;
+
+            uniform sampler2D uCurl;
+
+
+            uniform float curl;
+
+            uniform float dt;
+
+
+            void main () {
+
+                float L =
+                    texture2D(
+                        uCurl,
+                        vL
+                    ).x;
+
+
+                float R =
+                    texture2D(
+                        uCurl,
+                        vR
+                    ).x;
+
+
+                float T =
+                    texture2D(
+                        uCurl,
+                        vT
+                    ).x;
+
+
+                float B =
+                    texture2D(
+                        uCurl,
+                        vB
+                    ).x;
+
+
+                float C =
+                    texture2D(
+                        uCurl,
+                        vUv
+                    ).x;
+
+
+                vec2 force =
+                    0.5 *
+                    vec2(
+                        abs(T) - abs(B),
+                        abs(R) - abs(L)
+                    );
+
+
+                force /=
+                    length(force) +
+                    0.0001;
+
+
+                force *=
+                    curl *
+                    C;
+
+
+                force.y *= -1.0;
+
+
+                vec2 velocity =
+                    texture2D(
+                        uVelocity,
+                        vUv
+                    ).xy;
+
+
+                velocity +=
+                    force *
+                    dt;
+
+
+                velocity =
+                    clamp(
+                        velocity,
+                        vec2(-1000.0),
+                        vec2(1000.0)
+                    );
+
+
+                gl_FragColor =
+                    vec4(
+                        velocity,
+                        0.0,
+                        1.0
+                    );
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    PRESSURE
+    ==============================================================
+    */
+
+    const pressureShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision mediump float;
+
+
+            varying highp vec2 vUv;
+
+            varying highp vec2 vL;
+            varying highp vec2 vR;
+            varying highp vec2 vT;
+            varying highp vec2 vB;
+
+
+            uniform sampler2D uPressure;
+
+            uniform sampler2D uDivergence;
+
+
+            void main () {
+
+                float L =
+                    texture2D(
+                        uPressure,
+                        vL
+                    ).x;
+
+
+                float R =
+                    texture2D(
+                        uPressure,
+                        vR
+                    ).x;
+
+
+                float T =
+                    texture2D(
+                        uPressure,
+                        vT
+                    ).x;
+
+
+                float B =
+                    texture2D(
+                        uPressure,
+                        vB
+                    ).x;
+
+
+                float divergence =
+                    texture2D(
+                        uDivergence,
+                        vUv
+                    ).x;
+
+
+                float pressure =
+                    (
+                        L +
+                        R +
+                        B +
+                        T -
+                        divergence
+                    )
+                    *
+                    0.25;
+
+
+                gl_FragColor =
+                    vec4(
+                        pressure,
+                        0.0,
+                        0.0,
+                        1.0
+                    );
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    GRADIENT SUBTRACT
+    ==============================================================
+    */
+
+    const gradientSubtractShader =
+        compileShader(
+            gl.FRAGMENT_SHADER,
+
+            `
+            precision mediump float;
+
+
+            varying highp vec2 vUv;
+
+            varying highp vec2 vL;
+            varying highp vec2 vR;
+            varying highp vec2 vT;
+            varying highp vec2 vB;
+
+
+            uniform sampler2D uPressure;
+
+            uniform sampler2D uVelocity;
+
+
+            void main () {
+
+                float L =
+                    texture2D(
+                        uPressure,
+                        vL
+                    ).x;
+
+
+                float R =
+                    texture2D(
+                        uPressure,
+                        vR
+                    ).x;
+
+
+                float T =
+                    texture2D(
+                        uPressure,
+                        vT
+                    ).x;
+
+
+                float B =
+                    texture2D(
+                        uPressure,
+                        vB
+                    ).x;
+
+
+                vec2 velocity =
+                    texture2D(
+                        uVelocity,
+                        vUv
+                    ).xy;
+
+
+                velocity -=
+                    vec2(
+                        R - L,
+                        T - B
+                    );
+
+
+                gl_FragColor =
+                    vec4(
+                        velocity,
+                        0.0,
+                        1.0
+                    );
+            }
+            `
+        );
+
+
+    /*
+    ==============================================================
+    PROGRAM CLASSES
+    ==============================================================
+    */
+
+    class Program {
+
+        constructor(
+            vertexShader,
+            fragmentShader
+        ) {
+
+            this.program =
+                createProgram(
+                    vertexShader,
+                    fragmentShader
+                );
+
+
+            this.uniforms =
+                getUniforms(
+                    this.program
+                );
+        }
+
+
+        bind() {
+
+            gl.useProgram(
+                this.program
+            );
+
+        }
+    }
+
+
+    class Material {
+
+        constructor(
+            vertexShader,
+            fragmentShaderSource
+        ) {
+
+            this.vertexShader =
+                vertexShader;
+
+            this.fragmentShaderSource =
+                fragmentShaderSource;
+
+            this.programs = [];
+
+            this.activeProgram =
+                null;
+
+            this.uniforms = [];
+        }
+
+
+        setKeywords(
+            keywords
+        ) {
+
+            const hash =
+                (
+                    keywords || []
+                ).reduce(
+                    (
+                        total,
+                        key
+                    ) =>
+                        total +
+                        hashCode(key),
+                    0
+                );
+
+
+            let program =
+                this.programs[hash];
+
+
+            if (!program) {
+
+                const fragmentShader =
+                    compileShader(
+                        gl.FRAGMENT_SHADER,
+                        this.fragmentShaderSource,
+                        keywords
+                    );
+
+
+                program =
+                    createProgram(
+                        this.vertexShader,
+                        fragmentShader
+                    );
+
+
+                this.programs[hash] =
+                    program;
+            }
+
+
+            if(
+                program ===
+                this.activeProgram
+            ) {
+
+                return;
+            }
+
+
+            this.uniforms =
+                getUniforms(
+                    program
+                );
+
+
+            this.activeProgram =
+                program;
+        }
+
+
+        bind() {
+
+            gl.useProgram(
+                this.activeProgram
+            );
+
+        }
+
+    }
+
+
+    /*
+    ==============================================================
+    PROGRAM CREATION
+    ==============================================================
+    */
+
+    function createProgram(
+        vertexShader,
+        fragmentShader
+    ) {
+
+        const program =
+            gl.createProgram();
+
+
+        gl.attachShader(
+            program,
+            vertexShader
+        );
+
+
+        gl.attachShader(
+            program,
+            fragmentShader
+        );
+
+
+        gl.linkProgram(
+            program
+        );
+
+
+        if(
+            !gl.getProgramParameter(
+                program,
+                gl.LINK_STATUS
+            )
+        ) {
+
+            throw new Error(
+                gl.getProgramInfoLog(
+                    program
+                ) ||
+                "Program link failed"
+            );
+        }
+
+
+        return program;
+    }
+
+
+    function getUniforms(
+        program
+    ) {
+
+        const uniforms = {};
+
+
+        const count =
+            gl.getProgramParameter(
+                program,
+                gl.ACTIVE_UNIFORMS
+            );
+
+
+        for(
+            let i = 0;
+            i < count;
+            i++
+        ) {
+
+            const name =
+                gl.getActiveUniform(
+                    program,
+                    i
+                ).name;
+
+
+            uniforms[name] =
+                gl.getUniformLocation(
+                    program,
+                    name
+                );
+        }
+
+
+        return uniforms;
+    }
+
+
+    function compileShader(
+        type,
+        source,
+        keywords
+    ) {
+
+        source =
+            addKeywords(
+                source,
+                keywords
+            );
+
+
+        const shader =
+            gl.createShader(
+                type
+            );
+
+
+        gl.shaderSource(
+            shader,
+            source
+        );
+
+
+        gl.compileShader(
+            shader
+        );
+
+
+        if(
+            !gl.getShaderParameter(
+                shader,
+                gl.COMPILE_STATUS
+            )
+        ) {
+
+            throw new Error(
+                gl.getShaderInfoLog(
+                    shader
+                ) ||
+                "Shader compilation failed"
+            );
+        }
+
+
+        return shader;
+    }
+
+
+    function addKeywords(
+        source,
+        keywords
+    ) {
+
+        if(!keywords)
+            return source;
+
+
+        let prefix = "";
+
+
+        keywords.forEach(
+            key => {
+
+                prefix +=
+                    "#define " +
+                    key +
+                    "\n";
+            }
+        );
+
+
+        return prefix + source;
+    }
+
+
+    function hashCode(
+        text
+    ) {
+
+        if(!text.length)
+            return 0;
+
+
+        let hash = 0;
+
+
+        for(
+            let i = 0;
+            i < text.length;
+            i++
+        ) {
+
+            hash =
+                (
+                    hash << 5
+                ) -
+                hash +
+                text.charCodeAt(i);
+
+
+            hash |= 0;
+        }
+
+
+        return hash;
+    }
+
+
+    /*
+    ==============================================================
+    FULLSCREEN QUAD
+    ==============================================================
+    */
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        gl.createBuffer()
+    );
+
+
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+
+        new Float32Array([
+            -1, -1,
+            -1,  1,
+             1,  1,
+             1, -1
+        ]),
+
+        gl.STATIC_DRAW
+    );
+
+
+    gl.bindBuffer(
+        gl.ELEMENT_ARRAY_BUFFER,
+        gl.createBuffer()
+    );
+
+
+    gl.bufferData(
+        gl.ELEMENT_ARRAY_BUFFER,
+
+        new Uint16Array([
+            0,1,2,
+            0,2,3
+        ]),
+
+        gl.STATIC_DRAW
+    );
+
+
+    function bindQuad(
+        program
+    ) {
+
+        const location =
+            gl.getAttribLocation(
+                program,
+                "aPosition"
+            );
+
+
+        if(location >= 0) {
+
+            gl.enableVertexAttribArray(
+                location
+            );
+
+
+            gl.vertexAttribPointer(
+                location,
+                2,
+                gl.FLOAT,
+                false,
+                0,
+                0
+            );
+        }
+    }
+
+
+    function blit(
+        target,
+        clear = false
+    ) {
+
+        if(target == null) {
+
+            gl.viewport(
+                0,
+                0,
+                gl.drawingBufferWidth,
+                gl.drawingBufferHeight
+            );
+
+
+            gl.bindFramebuffer(
+                gl.FRAMEBUFFER,
+                null
+            );
+
+        } else {
+
+            gl.viewport(
+                0,
+                0,
+                target.width,
+                target.height
+            );
+
+
+            gl.bindFramebuffer(
+                gl.FRAMEBUFFER,
+                target.fbo
+            );
+        }
+
+
+        if(clear) {
+
+            gl.clearColor(
+                0,
+                0,
+                0,
+                1
+            );
+
+
+            gl.clear(
+                gl.COLOR_BUFFER_BIT
+            );
+        }
+
+
+        const current =
+            gl.getParameter(
+                gl.CURRENT_PROGRAM
+            );
+
+
+        bindQuad(
+            current
+        );
+
+
+        gl.drawElements(
+            gl.TRIANGLES,
+            6,
+            gl.UNSIGNED_SHORT,
+            0
+        );
+    }
+
+
+    /*
+    ==============================================================
+    PROGRAMS
+    ==============================================================
+    */
+
+    const copyProgram =
+        new Program(
+            baseVertexShader,
+            copyShader
+        );
+
+
+    const clearProgram =
+        new Program(
+            baseVertexShader,
+            clearShader
+        );
+
+
+    const splatProgram =
+        new Program(
+            baseVertexShader,
+            splatShader
+        );
+
+
+    const advectionProgram =
+        new Program(
+            baseVertexShader,
+            advectionShader
+        );
+
+
+    const divergenceProgram =
+        new Program(
+            baseVertexShader,
+            divergenceShader
+        );
+
+
+    const curlProgram =
+        new Program(
+            baseVertexShader,
+            curlShader
+        );
+
+
+    const vorticityProgram =
+        new Program(
+            baseVertexShader,
+            vorticityShader
+        );
+
+
+    const pressureProgram =
+        new Program(
+            baseVertexShader,
+            pressureShader
+        );
+
+
+    const gradientProgram =
+        new Program(
+            baseVertexShader,
+            gradientSubtractShader
+        );
+
+
+    const displayMaterial =
+        new Material(
+            baseVertexShader,
+            displayShaderSource
+        );
+
+
+    /*
+    ==============================================================
+    RESOLUTION
+    ==============================================================
+    */
+
+    function getResolution(
+        resolution
+    ) {
+
+        let aspect =
+            gl.drawingBufferWidth /
+            gl.drawingBufferHeight;
+
+
+        if(aspect < 1) {
+
+            aspect =
+                1 /
+                aspect;
+        }
+
+
+        const min =
+            Math.round(
+                resolution
+            );
+
+
+        const max =
+            Math.round(
+                resolution *
+                aspect
+            );
+
+
+        if(
+            gl.drawingBufferWidth >
+            gl.drawingBufferHeight
+        ) {
+
+            return {
+                width: max,
+                height: min
+            };
+
+        }
+
+
+        return {
+            width: min,
+            height: max
+        };
+    }
+
+
+    function scaleByPixelRatio(
+        input
+    ) {
+
+        return Math.floor(
+            input *
+            (
+                window.devicePixelRatio ||
+                1
+            )
+        );
+    }
+
+
+    /*
+    ==============================================================
+    FORMAT SUPPORT
+    ==============================================================
+    */
+
+    function supportRenderTextureFormat(
+        gl,
+        internalFormat,
+        format,
+        type
+    ) {
+
+        const texture =
+            gl.createTexture();
+
+
+        gl.bindTexture(
+            gl.TEXTURE_2D,
+            texture
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_MIN_FILTER,
+            gl.NEAREST
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_MAG_FILTER,
+            gl.NEAREST
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_WRAP_S,
+            gl.CLAMP_TO_EDGE
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_WRAP_T,
+            gl.CLAMP_TO_EDGE
+        );
+
+
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            internalFormat,
+            4,
+            4,
+            0,
+            format,
+            type,
+            null
+        );
+
+
+        const fbo =
+            gl.createFramebuffer();
+
+
+        gl.bindFramebuffer(
+            gl.FRAMEBUFFER,
+            fbo
+        );
+
+
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            texture,
+            0
+        );
+
+
+        return (
+            gl.checkFramebufferStatus(
+                gl.FRAMEBUFFER
+            )
+            ===
+            gl.FRAMEBUFFER_COMPLETE
+        );
+    }
+
+
+    function getSupportedFormat(
+        gl,
+        internalFormat,
+        format,
+        type
+    ) {
+
+        if(
+            !supportRenderTextureFormat(
+                gl,
+                internalFormat,
+                format,
+                type
+            )
+        ) {
+
+            if(
+                internalFormat ===
+                gl.R16F
+            ) {
+
+                return getSupportedFormat(
+                    gl,
+                    gl.RG16F,
+                    gl.RG,
+                    type
+                );
+            }
+
+
+            if(
+                internalFormat ===
+                gl.RG16F
+            ) {
+
+                return getSupportedFormat(
+                    gl,
+                    gl.RGBA16F,
+                    gl.RGBA,
+                    type
+                );
+            }
+
+
+            return null;
+        }
+
+
+        return {
+            internalFormat,
+            format
+        };
+    }
+
+
+    /*
+    ==============================================================
+    WEBGL CONTEXT
+    ==============================================================
+    */
+
+    function getWebGLContext(
+        canvas
+    ) {
+
+        const params = {
+
+            alpha: false,
+
+            depth: false,
+
+            stencil: false,
+
+            antialias: false,
+
+            preserveDrawingBuffer: false
+
+        };
+
+
+        let gl =
+            canvas.getContext(
+                "webgl2",
+                params
+            );
+
+
+        const isWebGL2 =
+            !!gl;
+
+
+        if(!isWebGL2) {
+
+            gl =
+                canvas.getContext(
+                    "webgl",
+                    params
+                )
+                ||
+                canvas.getContext(
+                    "experimental-webgl",
+                    params
+                );
+        }
+
+
+        if(!gl) {
+
+            return {
+                gl: null,
+                ext: {}
+            };
+        }
+
+
+        let halfFloat = null;
+
+        let supportLinearFiltering = null;
+
+
+        if(isWebGL2) {
+
+            gl.getExtension(
+                "EXT_color_buffer_float"
+            );
+
+
+            supportLinearFiltering =
+                gl.getExtension(
+                    "OES_texture_float_linear"
+                );
+
+        } else {
+
+            halfFloat =
+                gl.getExtension(
+                    "OES_texture_half_float"
+                );
+
+
+            supportLinearFiltering =
+                gl.getExtension(
+                    "OES_texture_half_float_linear"
+                );
+        }
+
+
+        gl.clearColor(
+            0,
+            0,
+            0,
+            1
+        );
+
+
+        const halfFloatTexType =
+            isWebGL2
+                ? gl.HALF_FLOAT
+                : (
+                    halfFloat
+                        ? halfFloat.HALF_FLOAT_OES
+                        : null
+                );
+
+
+        if(!halfFloatTexType) {
+
+            return {
+                gl: null,
+                ext: {}
+            };
+        }
+
+
+        let formatRGBA;
+
+        let formatRG;
+
+        let formatR;
+
+
+        if(isWebGL2) {
+
+            formatRGBA =
+                getSupportedFormat(
+                    gl,
+                    gl.RGBA16F,
+                    gl.RGBA,
+                    halfFloatTexType
+                );
+
+
+            formatRG =
+                getSupportedFormat(
+                    gl,
+                    gl.RG16F,
+                    gl.RG,
+                    halfFloatTexType
+                );
+
+
+            formatR =
+                getSupportedFormat(
+                    gl,
+                    gl.R16F,
+                    gl.RED,
+                    halfFloatTexType
+                );
+
+        } else {
+
+            formatRGBA =
+                getSupportedFormat(
+                    gl,
+                    gl.RGBA,
+                    gl.RGBA,
+                    halfFloatTexType
+                );
+
+
+            formatRG =
+                getSupportedFormat(
+                    gl,
+                    gl.RGBA,
+                    gl.RGBA,
+                    halfFloatTexType
+                );
+
+
+            formatR =
+                getSupportedFormat(
+                    gl,
+                    gl.RGBA,
+                    gl.RGBA,
+                    halfFloatTexType
+                );
+        }
+
+
+        return {
+
+            gl,
+
+            ext: {
+
+                formatRGBA,
+
+                formatRG,
+
+                formatR,
+
+                halfFloatTexType,
+
+                supportLinearFiltering
+
+            }
+
+        };
+    }
+
+
+    /*
+    ==============================================================
+    FRAMEBUFFERS
+    ==============================================================
+    */
+
+    let dye;
+
+    let velocity;
+
+    let divergence;
+
+    let curl;
+
+    let pressure;
+
+
+    function createFBO(
+        w,
+        h,
+        internalFormat,
+        format,
+        type,
+        filter
+    ) {
+
+        const texture =
+            gl.createTexture();
+
+
+        gl.activeTexture(
+            gl.TEXTURE0
+        );
+
+
+        gl.bindTexture(
+            gl.TEXTURE_2D,
+            texture
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_MIN_FILTER,
+            filter
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_MAG_FILTER,
+            filter
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_WRAP_S,
+            gl.CLAMP_TO_EDGE
+        );
+
+
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_WRAP_T,
+            gl.CLAMP_TO_EDGE
+        );
+
+
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            internalFormat,
+            w,
+            h,
+            0,
+            format,
+            type,
+            null
+        );
+
+
+        const fbo =
+            gl.createFramebuffer();
+
+
+        gl.bindFramebuffer(
+            gl.FRAMEBUFFER,
+            fbo
+        );
+
+
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            texture,
+            0
+        );
+
+
+        gl.viewport(
+            0,
+            0,
+            w,
+            h
+        );
+
+
+        gl.clear(
+            gl.COLOR_BUFFER_BIT
+        );
+
+
+        return {
+
+            texture,
+
+            fbo,
+
+            width: w,
+
+            height: h,
+
+            texelSizeX: 1 / w,
+
+            texelSizeY: 1 / h,
+
+
+            attach(id) {
+
+                gl.activeTexture(
+                    gl.TEXTURE0 + id
+                );
+
+
+                gl.bindTexture(
+                    gl.TEXTURE_2D,
+                    texture
+                );
+
+
+                return id;
+            }
+
+        };
+    }
+
+
+    function createDoubleFBO(
+        w,
+        h,
+        internalFormat,
+        format,
+        type,
+        filter
+    ) {
+
+        const a =
+            createFBO(
+                w,
+                h,
+                internalFormat,
+                format,
+                type,
+                filter
+            );
+
+
+        const b =
+            createFBO(
+                w,
+                h,
+                internalFormat,
+                format,
+                type,
+                filter
+            );
+
+
+        return {
+
+            width: w,
+
+            height: h,
+
+            texelSizeX:
+                a.texelSizeX,
+
+            texelSizeY:
+                a.texelSizeY,
+
+
+            get read() {
+
+                return a;
+            },
+
+
+            set read(value) {
+
+                a = value;
+            },
+
+
+            get write() {
+
+                return b;
+            },
+
+
+            set write(value) {
+
+                b = value;
+            },
+
+
+            swap() {
+
+                const temp =
+                    this.read;
+
+                this.read =
+                    this.write;
+
+                this.write =
+                    temp;
+            }
+
+        };
+    }
+
+
+    /*
+        Fixed implementation for double buffers.
+
+        Because `a` and `b` above are intentionally referenced
+        through accessor state, use a simple alternate object.
+    */
+
+    function makeDoubleFBO(
+        w,
+        h,
+        internalFormat,
+        format,
+        type,
+        filter
+    ) {
+
+        let first =
+            createFBO(
+                w,
+                h,
+                internalFormat,
+                format,
+                type,
+                filter
+            );
+
+
+        let second =
+            createFBO(
+                w,
+                h,
+                internalFormat,
+                format,
+                type,
+                filter
+            );
+
+
+        return {
+
+            width: w,
+
+            height: h,
+
+            texelSizeX:
+                first.texelSizeX,
+
+            texelSizeY:
+                first.texelSizeY,
+
+
+            get read() {
+
+                return first;
+            },
+
+
+            set read(value) {
+
+                first = value;
+            },
+
+
+            get write() {
+
+                return second;
+            },
+
+
+            set write(value) {
+
+                second = value;
+            },
+
+
+            swap() {
+
+                const temp =
+                    first;
+
+
+                first =
+                    second;
+
+
+                second =
+                    temp;
+            }
+
+        };
+    }
+
+
+    function resizeDoubleFBO(
+        target,
+        w,
+        h,
+        internalFormat,
+        format,
+        type,
+        filter
+    ) {
+
+        if(
+            target.width === w &&
+            target.height === h
+        ) {
+
+            return target;
+        }
+
+
+        const newFbo =
+            createFBO(
+                w,
+                h,
+                internalFormat,
+                format,
+                type,
+                filter
+            );
+
+
+        copyProgram.bind();
+
+
+        bindQuad(
+            copyProgram.program
+        );
+
+
+        gl.uniform1i(
+            copyProgram.uniforms.uTexture,
+            target.read.attach(0)
+        );
+
+
+        blit(
+            newFbo
+        );
+
+
+        target.read =
+            newFbo;
+
+
+        target.write =
+            createFBO(
+                w,
+                h,
+                internalFormat,
+                format,
+                type,
+                filter
+            );
+
+
+        target.width =
+            w;
+
+
+        target.height =
+            h;
+
+
+        target.texelSizeX =
+            1 / w;
+
+
+        target.texelSizeY =
+            1 / h;
+
+
+        return target;
+    }
+
+
+    function initFramebuffers() {
+
+        const simRes =
+            getResolution(
+                config.SIM_RESOLUTION
+            );
+
+
+        const dyeRes =
+            getResolution(
+                config.DYE_RESOLUTION
+            );
+
+
+        const type =
+            ext.halfFloatTexType;
+
+
+        const rgba =
+            ext.formatRGBA;
+
+
+        const rg =
+            ext.formatRG;
+
+
+        const r =
+            ext.formatR;
+
+
+        const filter =
+            ext.supportLinearFiltering
+                ? gl.LINEAR
+                : gl.NEAREST;
+
+
+        if(
+            !rgba ||
+            !rg ||
+            !r
+        ) {
+
+            throw new Error(
+                "This GPU/browser cannot create the required fluid buffers."
+            );
+        }
+
+
+        gl.disable(
+            gl.BLEND
+        );
+
+
+        if(!dye) {
+
+            dye =
+                makeDoubleFBO(
+                    dyeRes.width,
+                    dyeRes.height,
+                    rgba.internalFormat,
+                    rgba.format,
+                    type,
+                    filter
+                );
+
+        } else {
+
+            dye =
+                resizeDoubleFBO(
+                    dye,
+                    dyeRes.width,
+                    dyeRes.height,
+                    rgba.internalFormat,
+                    rgba.format,
+                    type,
+                    filter
+                );
+        }
+
+
+        if(!velocity) {
+
+            velocity =
+                makeDoubleFBO(
+                    simRes.width,
+                    simRes.height,
+                    rg.internalFormat,
+                    rg.format,
+                    type,
+                    filter
+                );
+
+        } else {
+
+            velocity =
+                resizeDoubleFBO(
+                    velocity,
+                    simRes.width,
+                    simRes.height,
+                    rg.internalFormat,
+                    rg.format,
+                    type,
+                    filter
+                );
+        }
+
+
+        divergence =
+            createFBO(
+                simRes.width,
+                simRes.height,
+                r.internalFormat,
+                r.format,
+                type,
+                gl.NEAREST
+            );
+
+
+        curl =
+            createFBO(
+                simRes.width,
+                simRes.height,
+                r.internalFormat,
+                r.format,
+                type,
+                gl.NEAREST
+            );
+
+
+        pressure =
+            makeDoubleFBO(
+                simRes.width,
+                simRes.height,
+                r.internalFormat,
+                r.format,
+                type,
+                gl.NEAREST
+            );
+    }
+
+
+    /*
+    ==============================================================
+    SPLAT
+    ==============================================================
+    */
+
+    function correctRadius(
+        radius
+    ) {
+
+        let aspect =
+            canvas.width /
+            canvas.height;
+
+
+        if(aspect > 1) {
+
+            radius *=
+                aspect;
+        }
+
+
+        return radius;
+    }
+
+
+    function splat(
+        x,
+        y,
+        dx,
+        dy,
+        color,
+        radius
+    ) {
+
+        splatProgram.bind();
+
+
+        bindQuad(
+            splatProgram.program
+        );
+
+
+        gl.uniform1i(
+            splatProgram.uniforms.uTarget,
+            velocity.read.attach(0)
+        );
+
+
+        gl.uniform1f(
+            splatProgram.uniforms.aspectRatio,
+            canvas.width /
+            canvas.height
+        );
+
+
+        gl.uniform2f(
+            splatProgram.uniforms.point,
+            x,
+            y
+        );
+
+
+        gl.uniform1f(
+            splatProgram.uniforms.radius,
+            correctRadius(
+                radius ??
+                config.SPLAT_RADIUS / 100
+            )
+        );
+
+
+        /*
+            Velocity injection.
+        */
+
+        gl.uniform3f(
+            splatProgram.uniforms.color,
+            dx,
+            dy,
+            0
+        );
+
+
+        blit(
+            velocity.write
+        );
+
+
+        velocity.swap();
+
+
+        /*
+            Dye injection.
+
+            Only the selected accent color is injected.
+        */
+
+        gl.uniform1i(
+            splatProgram.uniforms.uTarget,
+            dye.read.attach(0)
+        );
+
+
+        gl.uniform3f(
+            splatProgram.uniforms.color,
+            color.r,
+            color.g,
+            color.b
+        );
+
+
+        blit(
+            dye.write
+        );
+
+
+        dye.swap();
+    }
+
+
+    /*
+    ==============================================================
+    PHYSICS STEP
+    ==============================================================
+    */
+
+    function step(
+        dt
+    ) {
+
+        gl.disable(
+            gl.BLEND
+        );
+
+
+        /*
+        ----------------------
+        CURL
+        ----------------------
+        */
+
+        curlProgram.bind();
+
+        bindQuad(
+            curlProgram.program
+        );
+
+
+        gl.uniform2f(
+            curlProgram.uniforms.texelSize,
+            velocity.texelSizeX,
+            velocity.texelSizeY
+        );
+
+
+        gl.uniform1i(
+            curlProgram.uniforms.uVelocity,
+            velocity.read.attach(0)
+        );
+
+
+        blit(
+            curl
+        );
+
+
+        /*
+        ----------------------
+        VORTICITY
+        ----------------------
+        */
+
+        vorticityProgram.bind();
+
+        bindQuad(
+            vorticityProgram.program
+        );
+
+
+        gl.uniform2f(
+            vorticityProgram.uniforms.texelSize,
+            velocity.texelSizeX,
+            velocity.texelSizeY
+        );
+
+
+        gl.uniform1i(
+            vorticityProgram.uniforms.uVelocity,
+            velocity.read.attach(0)
+        );
+
+
+        gl.uniform1i(
+            vorticityProgram.uniforms.uCurl,
+            curl.attach(1)
+        );
+
+
+        gl.uniform1f(
+            vorticityProgram.uniforms.curl,
+            config.CURL
+        );
+
+
+        gl.uniform1f(
+            vorticityProgram.uniforms.dt,
+            dt
+        );
+
+
+        blit(
+            velocity.write
+        );
+
+
+        velocity.swap();
+
+
+        /*
+        ----------------------
+        DIVERGENCE
+        ----------------------
+        */
+
+        divergenceProgram.bind();
+
+        bindQuad(
+            divergenceProgram.program
+        );
+
+
+        gl.uniform2f(
+            divergenceProgram.uniforms.texelSize,
+            velocity.texelSizeX,
+            velocity.texelSizeY
+        );
+
+
+        gl.uniform1i(
+            divergenceProgram.uniforms.uVelocity,
+            velocity.read.attach(0)
+        );
+
+
+        blit(
+            divergence
+        );
+
+
+        /*
+        ----------------------
+        PRESSURE CLEAR
+        ----------------------
+        */
+
+        clearProgram.bind();
+
+        bindQuad(
+            clearProgram.program
+        );
+
+
+        gl.uniform1i(
+            clearProgram.uniforms.uTexture,
+            pressure.read.attach(0)
+        );
+
+
+        gl.uniform1f(
+            clearProgram.uniforms.value,
+            config.PRESSURE
+        );
+
+
+        blit(
+            pressure.write
+        );
+
+
+        pressure.swap();
+
+
+        /*
+        ----------------------
+        PRESSURE SOLVE
+        ----------------------
+        */
+
+        pressureProgram.bind();
+
+        bindQuad(
+            pressureProgram.program
+        );
+
+
+        gl.uniform2f(
+            pressureProgram.uniforms.texelSize,
+            velocity.texelSizeX,
+            velocity.texelSizeY
+        );
+
+
+        gl.uniform1i(
+            pressureProgram.uniforms.uDivergence,
+            divergence.attach(0)
+        );
+
+
+        for(
+            let i = 0;
+            i <
+            config.PRESSURE_ITERATIONS;
+            i++
+        ) {
+
+            gl.uniform1i(
+                pressureProgram.uniforms.uPressure,
+                pressure.read.attach(1)
+            );
+
+
+            blit(
+                pressure.write
+            );
+
+
+            pressure.swap();
+        }
+
+
+        /*
+        ----------------------
+        GRADIENT SUBTRACT
+        ----------------------
+        */
+
+        gradientProgram.bind();
+
+        bindQuad(
+            gradientProgram.program
+        );
+
+
+        gl.uniform2f(
+            gradientProgram.uniforms.texelSize,
+            velocity.texelSizeX,
+            velocity.texelSizeY
+        );
+
+
+        gl.uniform1i(
+            gradientProgram.uniforms.uPressure,
+            pressure.read.attach(0)
+        );
+
+
+        gl.uniform1i(
+            gradientProgram.uniforms.uVelocity,
+            velocity.read.attach(1)
+        );
+
+
+        blit(
+            velocity.write
+        );
+
+
+        velocity.swap();
+
+
+        /*
+        ----------------------
+        VELOCITY ADVECTION
+        ----------------------
+        */
+
+        advectionProgram.bind();
+
+        bindQuad(
+            advectionProgram.program
+        );
+
+
+        gl.uniform2f(
+            advectionProgram.uniforms.texelSize,
+            velocity.texelSizeX,
+            velocity.texelSizeY
+        );
+
+
+        if(
+            !ext.supportLinearFiltering
+        ) {
+
+            gl.uniform2f(
+                advectionProgram.uniforms.dyeTexelSize,
+                velocity.texelSizeX,
+                velocity.texelSizeY
+            );
+        }
+
+
+        const velocityId =
+            velocity.read.attach(0);
+
+
+        gl.uniform1i(
+            advectionProgram.uniforms.uVelocity,
+            velocityId
+        );
+
+
+        gl.uniform1i(
+            advectionProgram.uniforms.uSource,
+            velocityId
+        );
+
+
+        gl.uniform1f(
+            advectionProgram.uniforms.dt,
+            dt
+        );
+
+
+        gl.uniform1f(
+            advectionProgram.uniforms.dissipation,
+            config.VELOCITY_DISSIPATION
+        );
+
+
+        blit(
+            velocity.write
+        );
+
+
+        velocity.swap();
+
+
+        /*
+        ----------------------
+        DYE ADVECTION
+        ----------------------
+        */
+
+        if(
+            !ext.supportLinearFiltering
+        ) {
+
+            gl.uniform2f(
+                advectionProgram.uniforms.dyeTexelSize,
+                dye.texelSizeX,
+                dye.texelSizeY
+            );
+        }
+
+
+        gl.uniform1i(
+            advectionProgram.uniforms.uVelocity,
+            velocity.read.attach(0)
+        );
+
+
+        gl.uniform1i(
+            advectionProgram.uniforms.uSource,
+            dye.read.attach(1)
+        );
+
+
+        gl.uniform1f(
+            advectionProgram.uniforms.dissipation,
+            config.DENSITY_DISSIPATION
+        );
+
+
+        blit(
+            dye.write
+        );
+
+
+        dye.swap();
+    }
+
+
+    /*
+    ==============================================================
+    RENDER
+    ==============================================================
+    */
+
+    function render() {
+
+        /*
+            Draw the simulation into a fresh black frame.
+
+            The previous version enabled framebuffer blending here,
+            which could make the display accumulate brightness from
+            earlier frames and look like it was blinking.
+        */
+
+        gl.disable(
+            gl.BLEND
+        );
+
+
+        displayMaterial.bind();
+
+
+        bindQuad(
+            displayMaterial.activeProgram
+        );
+
+
+        gl.uniform2f(
+            displayMaterial.uniforms.texelSize,
+            1 /
+                gl.drawingBufferWidth,
+            1 /
+                gl.drawingBufferHeight
+        );
+
+
+        gl.uniform1i(
+            displayMaterial.uniforms.uTexture,
+            dye.read.attach(0)
+        );
+
+
+        blit(
+            null,
+            true
+        );
+    }
+
+
+    /*
+    ==============================================================
+    RESIZE
+    ==============================================================
+    */
+
+    function resizeCanvas() {
+
+        const width =
+            scaleByPixelRatio(
+                canvas.clientWidth
+            );
+
+
+        const height =
+            scaleByPixelRatio(
+                canvas.clientHeight
+            );
+
+
+        if(
+            canvas.width !== width ||
+            canvas.height !== height
+        ) {
+
+            canvas.width =
+                width;
+
+
+            canvas.height =
+                height;
+
+
+            return true;
+        }
+
+
+        return false;
+    }
+
+
+    /*
+    ==============================================================
+    POINTER INPUT
+    ==============================================================
+    */
+
+    function applyPointerInput() {
+
+        if(
+            !pointer.moved
+        ) {
+
+            return;
+        }
+
+
+        pointer.moved =
+            false;
+
+
+        const dx =
+            pointer.deltaX *
+            config.SPLAT_FORCE;
+
+
+        const dy =
+            pointer.deltaY *
+            config.SPLAT_FORCE;
+
+
+        splat(
+            pointer.texcoordX,
+            pointer.texcoordY,
+            dx,
+            dy,
+            pointer.color,
+            config.SPLAT_RADIUS / 100
+        );
+    }
+
+
+    /*
+    ==============================================================
+    AUTONOMOUS FLUID MOTION
+    ==============================================================
+
+    This is the important part for your
+    "infinite domain" requirement.
+
+    Even with ZERO cursor movement, the field receives
+    tiny impulses that are continuously moved by the fluid
+    simulation.
+
+    This prevents the page from looking like:
+
+        "static background + cursor trail"
+
+    and makes it feel more like:
+
+        "the entire background is alive"
+    */
+
+    function autoFlow(
+        elapsed
+    ) {
+
+        if(
+            !config.AUTO_FLOW
+        ) {
+
+            return;
+        }
+
+
+        /*
+            Keep the autonomous motion continuous.
+
+            The smoke now follows one smooth horizontal sweep:
+
+                RIGHT  →  LEFT  →  RIGHT
+
+            There is no hard direction flip. The velocity naturally
+            slows near the edges and reverses, which keeps the motion
+            cinematic instead of jerky.
+        */
+
+        flowTime +=
+            elapsed;
+
+        accumulated +=
+            elapsed;
+
+
+        if(
+            accumulated <
+            config.AUTO_FLOW_INTERVAL
+        ) {
+
+            return;
+        }
+
+
+        /*
+            Preserve leftover time so the cadence stays stable
+            even when a frame takes slightly longer than usual.
+        */
+
+        accumulated -=
+            config.AUTO_FLOW_INTERVAL;
+
+
+        const phase =
+            flowTime *
+            config.AUTO_FLOW_SPEED;
+
+
+        const sweep =
+            Math.sin(
+                phase
+            );
+
+
+        const direction =
+            Math.cos(
+                phase
+            );
+
+
+        /*
+            Primary smoke stream.
+        */
+
+        const pointOne = {
+
+            x:
+                0.50 +
+                config.AUTO_FLOW_SWEEP *
+                sweep,
+
+            y:
+                0.34 +
+                Math.sin(
+                    flowTime *
+                    0.30
+                ) *
+                0.08,
+
+            vx:
+                direction *
+                config.AUTO_FLOW_STRENGTH,
+
+            vy:
+                Math.cos(
+                    flowTime *
+                    0.30
+                ) *
+                config.AUTO_FLOW_STRENGTH *
+                0.10
+
+        };
+
+
+        /*
+            Secondary stream keeps the lower half alive while
+            following the exact same left/right direction.
+        */
+
+        const pointTwo = {
+
+            x:
+                0.50 +
+                config.AUTO_FLOW_SWEEP *
+                sweep *
+                0.92,
+
+            y:
+                0.66 +
+                Math.cos(
+                    flowTime *
+                    0.24
+                ) *
+                0.08,
+
+            vx:
+                direction *
+                config.AUTO_FLOW_STRENGTH *
+                0.82,
+
+            vy:
+                -Math.sin(
+                    flowTime *
+                    0.24
+                ) *
+                config.AUTO_FLOW_STRENGTH *
+                0.10
+
+        };
+
+
+        const points = [
+            pointOne,
+            pointTwo
+        ];
+
+
+        for(
+            const p of points
+        ) {
+
+            /*
+                Low, constant dye injection prevents the red field
+                from pulsing brighter every time a new splat arrives.
+            */
+
+            const color = {
+
+                r:
+                    config.COLOR.r *
+                    0.08,
+
+                g:
+                    config.COLOR.g *
+                    0.08,
+
+                b:
+                    config.COLOR.b *
+                    0.08
+
+            };
+
+
+            splat(
+                Math.min(
+                    0.96,
+                    Math.max(
+                        0.04,
+                        p.x
+                    )
+                ),
+
+                wrap01(
+                    p.y
+                ),
+
+                p.vx,
+                p.vy,
+
+                color,
+
+                config.AUTO_FLOW_SIZE
+            );
+        }
+    }
+
+    function wrap01(
+        value
+    ) {
+
+        return (
+            value -
+            Math.floor(value)
+        );
+    }
+
+
+    /*
+    ==============================================================
+    MAIN ANIMATION LOOP
+    ==============================================================
+    */
+
+    function update() {
+
+        const now =
+            Date.now();
+
+
+        let dt =
+            (
+                now -
+                lastUpdateTime
+            )
+            /
+            1000;
+
+
+        /*
+            Prevent massive jumps when the browser
+            tab becomes inactive.
+        */
+
+        dt =
+            Math.min(
+                dt,
+                0.016666
+            );
+
+
+        lastUpdateTime =
+            now;
+
+
+        /*
+        Resize simulation
+        */
+
+        if(
+            resizeCanvas()
+        ) {
+
+            initFramebuffers();
+        }
+
+
+        /*
+        User input
+        */
+
+        applyPointerInput();
+
+
+        /*
+        Background movement
+        */
+
+        autoFlow(
+            dt
+        );
+
+
+        /*
+        Physics
+        */
+
+        step(
+            dt
+        );
+
+
+        /*
+        Draw
+        */
+
+        render();
+
+
+        requestAnimationFrame(
+            update
+        );
+    }
+
+
+    /*
+    ==============================================================
+    POINTER POSITION
+    ==============================================================
+    */
+
+    function updatePointerMoveData(
+        posX,
+        posY
+    ) {
+
+        pointer.prevTexcoordX =
+            pointer.texcoordX;
+
+
+        pointer.prevTexcoordY =
+            pointer.texcoordY;
+
+
+        pointer.texcoordX =
+            posX /
+            canvas.width;
+
+
+        pointer.texcoordY =
+            1 -
+            posY /
+            canvas.height;
+
+
+        pointer.deltaX =
+            correctDeltaX(
+                pointer.texcoordX -
+                pointer.prevTexcoordX
+            );
+
+
+        pointer.deltaY =
+            correctDeltaY(
+                pointer.texcoordY -
+                pointer.prevTexcoordY
+            );
+
+
+        pointer.moved =
+            Math.abs(
+                pointer.deltaX
+            ) > 0
+            ||
+            Math.abs(
+                pointer.deltaY
+            ) > 0;
+
+
+        pointer.color =
+            {
+                ...config.COLOR
+            };
+    }
+
+
+    function updatePointerDownData(
+        posX,
+        posY
+    ) {
+
+        pointer.down =
+            true;
+
+
+        pointer.texcoordX =
+            posX /
+            canvas.width;
+
+
+        pointer.texcoordY =
+            1 -
+            posY /
+            canvas.height;
+
+
+        pointer.prevTexcoordX =
+            pointer.texcoordX;
+
+
+        pointer.prevTexcoordY =
+            pointer.texcoordY;
+
+
+        pointer.deltaX =
+            0;
+
+
+        pointer.deltaY =
+            0;
+    }
+
+
+    function updatePointerUpData() {
+
+        pointer.down =
+            false;
+    }
+
+
+    function correctDeltaX(
+        delta
+    ) {
+
+        const aspect =
+            canvas.width /
+            canvas.height;
+
+
+        if(
+            aspect <
+            1
+        ) {
+
+            delta *=
+                aspect;
+        }
+
+
+        return delta;
+    }
+
+
+    function correctDeltaY(
+        delta
+    ) {
+
+        const aspect =
+            canvas.width /
+            canvas.height;
+
+
+        if(
+            aspect >
+            1
+        ) {
+
+            delta /=
+                aspect;
+        }
+
+
+        return delta;
+    }
+
+
+    /*
+    ==============================================================
+    CLICK BURST
+    ==============================================================
+    */
+
+    function clickSplat() {
+
+        const x =
+            pointer.texcoordX;
+
+
+        const y =
+            pointer.texcoordY;
+
+
+        /*
+            Stronger than normal movement.
+        */
+
+        const color = {
+
+            r:
+                config.COLOR.r *
+                2.8,
+
+            g:
+                config.COLOR.g *
+                2.8,
+
+            b:
+                config.COLOR.b *
+                2.8
+
+        };
+
+
+        splat(
+            x,
+            y,
+
+            (
+                Math.random() -
+                0.5
+            ) *
+            250,
+
+            (
+                Math.random() -
+                0.5
+            ) *
+            250,
+
+            color,
+
+            config.SPLAT_RADIUS /
+            75
+        );
+    }
+
+
+    /*
+    ==============================================================
+    COLOR CONVERSION
+    ==============================================================
+    */
+
+    function hexToRgb01(
+        hex
+    ) {
+
+        const clean =
+            hex.replace(
+                "#",
+                ""
+            );
+
+
+        const value =
+            parseInt(
+                clean,
+                16
+            );
+
+
+        return {
+
+            r:
+                (
+                    (
+                        value >> 16
+                    )
+                    &
+                    255
+                )
+                /
+                255,
+
+
+            g:
+                (
+                    (
+                        value >> 8
+                    )
+                    &
+                    255
+                )
+                /
+                255,
+
+
+            b:
+                (
+                    value &
+                    255
+                )
+                /
+                255
+
+        };
+    }
+
+
+    function rgb01ToHex(
+        color
+    ) {
+
+        const r =
+            Math.round(
+                color.r *
+                255
+            )
+            .toString(16)
+            .padStart(
+                2,
+                "0"
+            );
+
+
+        const g =
+            Math.round(
+                color.g *
+                255
+            )
+            .toString(16)
+            .padStart(
+                2,
+                "0"
+            );
+
+
+        const b =
+            Math.round(
+                color.b *
+                255
+            )
+            .toString(16)
+            .padStart(
+                2,
+                "0"
+            );
+
+
+        return (
+            "#"
+            +
+            (
+                r +
+                g +
+                b
+            ).toUpperCase()
+        );
+    }
+
+
+    function setAccentColor(
+        hex
+    ) {
+
+        config.COLOR =
+            hexToRgb01(
+                hex
+            );
+
+
+        pointer.color =
+            {
+                ...config.COLOR
+            };
+
+
+        /*
+            Update CSS variables.
+        */
+
+        document.documentElement.style.setProperty(
+            "--accent",
+            hex
+        );
+
+
+        document.documentElement.style.setProperty(
+
+            "--accent-rgb",
+
+            `
+            ${
+                Math.round(
+                    config.COLOR.r *
+                    255
+                )
+            },
+
+            ${
+                Math.round(
+                    config.COLOR.g *
+                    255
+                )
+            },
+
+            ${
+                Math.round(
+                    config.COLOR.b *
+                    255
+                )
+            }
+            `
+
+        );
+
+
+        const value =
+            rgb01ToHex(
+                config.COLOR
+            );
+
+
+        document.getElementById(
+            "colorValue"
+        ).textContent =
+            value;
+
+
+        /*
+            Mark active preset.
+        */
+
+        document
+            .querySelectorAll(
+                ".swatch"
+            )
+            .forEach(
+                swatch => {
+
+                    swatch.classList.toggle(
+
+                        "active",
+
+                        swatch.dataset.color
+                            .toLowerCase()
+                        ===
+                        hex.toLowerCase()
+
+                    );
+
+                }
+            );
+    }
+
+
+    /*
+    ==============================================================
+    UI CONTROLS
+    ==============================================================
+    */
+
+    const colorPicker =
+        document.getElementById(
+            "colorPicker"
+        );
+
+
+    const motionRange =
+        document.getElementById(
+            "motion"
+        );
+
+
+    const smokeRange =
+        document.getElementById(
+            "smoke"
+        );
+
+
+    const fadeRange =
+        document.getElementById(
+            "fade"
+        );
+
+
+    /*
+    --------------------------------------------------------------
+    Color picker
+    --------------------------------------------------------------
+    */
+
+    colorPicker.addEventListener(
+        "input",
+        event => {
+
+            setAccentColor(
+                event.target.value
+            );
+        }
+    );
+
+
+    /*
+    --------------------------------------------------------------
+    Presets
+    --------------------------------------------------------------
+    */
+
+    document
+        .querySelectorAll(
+            ".swatch"
+        )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        const color =
+                            button.dataset.color;
+
+
+                        colorPicker.value =
+                            color;
+
+
+                        setAccentColor(
+                            color
+                        );
+                    }
+                );
+            }
+        );
+
+
+    /*
+    --------------------------------------------------------------
+    Ambient motion
+    --------------------------------------------------------------
+    */
+
+    motionRange.addEventListener(
+        "input",
+        event => {
+
+            const value =
+                Number(
+                    event.target.value
+                );
+
+
+            config.AUTO_FLOW_STRENGTH = value * 0.74;
+
+
+            config.AUTO_FLOW_INTERVAL =
+                Math.max(
+                    0.08,
+                    0.20 -
+                    value / 1600
+                );
+
+
+            document.getElementById(
+                "motionValue"
+            ).textContent = value;
+        }
+    );
+
+
+    /*
+    --------------------------------------------------------------
+    Smoke amount
+    --------------------------------------------------------------
+    */
+
+    smokeRange.addEventListener(
+        "input",
+        event => {
+
+            const value =
+                Number(
+                    event.target.value
+                );
+
+
+            config.SPLAT_FORCE =
+                2500 +
+                value *
+                32;
+
+
+            config.AUTO_FLOW_SIZE =
+                0.07 +
+                value /
+                1500;
+
+
+            document.getElementById(
+                "smokeValue"
+            ).textContent =
+                value;
+        }
+    );
+
+
+    /*
+    --------------------------------------------------------------
+    Dissipation
+    --------------------------------------------------------------
+    */
+
+    fadeRange.addEventListener(
+        "input",
+        event => {
+
+            const value =
+                Number(
+                    event.target.value
+                );
+
+
+            config.DENSITY_DISSIPATION =
+                1.0 +
+                value /
+                20;
+
+
+            config.VELOCITY_DISSIPATION =
+                0.15 +
+                value /
+                140;
+
+
+            document.getElementById(
+                "fadeValue"
+            ).textContent =
+                value;
+        }
+    );
+
+
+    /*
+    ==============================================================
+    MOUSE
+    ==============================================================
+    */
+
+    window.addEventListener(
+        "mousemove",
+        event => {
+
+            updatePointerMoveData(
+
+                scaleByPixelRatio(
+                    event.clientX
+                ),
+
+                scaleByPixelRatio(
+                    event.clientY
+                )
+
+            );
+
+
+            const cursor =
+                document.querySelector(
+                    ".cursor"
+                );
+
+
+            cursor.style.transform =
+                `
+                translate3d(
+                    ${event.clientX}px,
+                    ${event.clientY}px,
+                    0
+                )
+                `;
+        }
+    );
+
+
+    /*
+    ==============================================================
+    MOUSE DOWN
+    ==============================================================
+    */
+
+    window.addEventListener(
+        "mousedown",
+        event => {
+
+            clickSplat();
+
+
+            updatePointerDownData(
+
+                scaleByPixelRatio(
+                    event.clientX
+                ),
+
+                scaleByPixelRatio(
+                    event.clientY
+                )
+
+            );
+        }
+    );
+
+
+    /*
+    ==============================================================
+    MOUSE UP
+    ==============================================================
+    */
+
+    window.addEventListener(
+        "mouseup",
+        () => {
+
+            updatePointerUpData();
+        }
+    );
+
+
+    /*
+    ==============================================================
+    TOUCH
+    ==============================================================
+    */
+
+    window.addEventListener(
+        "touchstart",
+        event => {
+
+            const touch =
+                event.touches[0];
+
+
+            if(!touch)
+                return;
+
+
+            updatePointerDownData(
+
+                scaleByPixelRatio(
+                    touch.clientX
+                ),
+
+                scaleByPixelRatio(
+                    touch.clientY
+                )
+
+            );
+
+
+            clickSplat();
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    window.addEventListener(
+        "touchmove",
+        event => {
+
+            const touch =
+                event.touches[0];
+
+
+            if(!touch)
+                return;
+
+
+            updatePointerMoveData(
+
+                scaleByPixelRatio(
+                    touch.clientX
+                ),
+
+                scaleByPixelRatio(
+                    touch.clientY
+                )
+
+            );
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    window.addEventListener(
+        "touchend",
+        () => {
+
+            updatePointerUpData();
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    /*
+    ==============================================================
+    INITIALIZE
+    ==============================================================
+    */
+
+    resizeCanvas();
+
+    initFramebuffers();
+
+    displayMaterial.setKeywords(
+        config.SHADING
+            ? ["SHADING"]
+            : []
+    );
+
+
+    /*
+    ==============================================================
+    STARTUP FLUID
+    ==============================================================
+
+    Start with some VERY weak smoke.
+
+    This avoids an empty black screen while still keeping
+    the effect subtle.
+    */
+
+    for(
+        let i = 0;
+        i < 6;
+        i++
+    ) {
+
+        const angle =
+            (
+                i /
+                8
+            )
+            *
+            Math.PI *
+            2;
+
+
+        const x =
+            0.5 +
+            Math.cos(
+                angle
+            )
+            *
+            0.34;
+
+
+        const y =
+            0.5 +
+            Math.sin(
+                angle
+            )
+            *
+            0.28;
+
+
+        splat(
+
+            wrap01(x),
+
+            wrap01(y),
+
+            Math.cos(
+                angle +
+                1.4
+            )
+            *
+            55,
+
+            Math.sin(
+                angle +
+                1.4
+            )
+            *
+            55,
+
+            {
+
+                r:
+                    config.COLOR.r *
+                    0.08,
+
+                g:
+                    config.COLOR.g *
+                    0.08,
+
+                b:
+                    config.COLOR.b *
+                    0.08
+
+            },
+
+            0.11
+        );
+    }
+
+
+    /*
+    ==============================================================
+    BEGIN
+    ==============================================================
+    */
+
+    requestAnimationFrame(
+        update
+    );
+}
+
+/* ==============================================================
+   FLUID CONTROL PANEL TOGGLE
+   ============================================================== */
+
+const fluidControlToggle =
+    document.getElementById(
+        "fluidControlToggle"
+    );
+
+const fluidPanel =
+    document.getElementById(
+        "fluidPanel"
+    );
+
+
+fluidControlToggle.addEventListener(
+    "click",
+    function () {
+
+        fluidPanel.classList.toggle("open");
+
+        if (
+            fluidPanel.classList.contains("open")
+        ) {
+
+            fluidControlToggle.textContent =
+                "CLOSE CONTROLS";
+
+        } else {
+
+            fluidControlToggle.textContent =
+                "FLUID CONTROLS";
+
+        }
+
+    }
+);
+
+/* ==========================================================
+   SCROLL REVEAL ANIMATION
+   ========================================================== */
+
+let lastScrollY = window.scrollY;
+let isScrollingDown = true;
+
+window.addEventListener("scroll", () => {
+
+    const currentScrollY = window.scrollY;
+
+    if (currentScrollY > lastScrollY) {
+        isScrollingDown = true;
+        document.body.classList.add("scroll-down");
+        document.body.classList.remove("scroll-up");
+    }
+    else if (currentScrollY < lastScrollY) {
+        isScrollingDown = false;
+        document.body.classList.add("scroll-up");
+        document.body.classList.remove("scroll-down");
+    }
+
+    lastScrollY = currentScrollY;
+
+}, { passive: true });
+
+
+const revealElements = document.querySelectorAll(".reveal");
+
+const revealObserver = new IntersectionObserver(
+    (entries) => {
+
+        entries.forEach((entry) => {
+
+            if (entry.isIntersecting) {
+
+                // Element is entering the screen
+                entry.target.classList.add("visible");
+
+            } else {
+
+                // Element is leaving the screen
+                // Remove visible so it can animate again
+                entry.target.classList.remove("visible");
+
+            }
+
+        });
+
+    },
+    {
+        threshold: 0.15
+    }
+);
+
+revealElements.forEach((element) => {
+    revealObserver.observe(element);
+});
+
+
+/* ==========================================================
+   SECTION COUNTER
+   ========================================================== */
+
+const sections =
+    document.querySelectorAll(".scroll-section");
+
+const counter =
+    document.querySelector(".section-counter");
+
+const totalSections =
+    sections.length + 2;
+
+const sectionObserver =
+    new IntersectionObserver(
+        (entries) => {
+
+            entries.forEach((entry) => {
+
+                if (entry.isIntersecting) {
+
+                    const index =
+                        [...sections].indexOf(entry.target) + 3;
+
+                    counter.textContent =
+                        String(index).padStart(2, "0") +
+                        " / " +
+                        String(totalSections).padStart(2, "0");
+
+                }
+
+            });
+
+        },
+        {
+            threshold: 0.5
+        }
+    );
+
+sections.forEach((section) => {
+    sectionObserver.observe(section);
+});
+
+// ==========================================================
+// HERO GLITCH — FIRST LOAD
+// ==========================================================
+
+window.addEventListener("load", () => {
+
+    const hero = document.querySelector(".hero-glitch");
+
+    if (!hero) return;
+
+    setTimeout(() => {
+        hero.classList.add("glitch-active");
+    }, 150);
+
+});
+</script>
+
+
+
+</body>
+</html>
